@@ -141,6 +141,7 @@ jobs:
     - name: Install Dependencies
       run: |
         brew install portaudio sdl2 cmake
+        echo "CMAKE_PREFIX_PATH=$(brew --prefix portaudio);$(brew --prefix sdl2)" >> $GITHUB_ENV
 
     - name: Setup ImGui
       run: |
@@ -150,7 +151,8 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release ..
+        cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}" ..
         make -j$(sysctl -n hw.ncpu)
 
     - name: Create App Bundle
