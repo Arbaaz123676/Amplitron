@@ -1,6 +1,9 @@
 #pragma once
 
 // Octave generator for sub-octave and upper-octave guitar tones.
+// Sub-octave generation derives a period-doubled component from zero-crossing
+// state, while the upper octave emphasizes rectified/nonlinear content; output
+// blends dry, sub, and upper components by their mix gains.
 
 #include "audio/effect.h"
 

@@ -1,6 +1,9 @@
 #pragma once
 
 // Hard-clipping distortion effect with tone shaping.
+// The driven sample u=drive*x[n] is clipped with y=clamp(u, -clip, clip), then
+// filtered by the tone stage and level-scaled; this creates odd harmonics as
+// the transfer function flattens near the clipping threshold.
 
 #include "audio/effect.h"
 #include "audio/dsp/biquad.h"
