@@ -87,7 +87,7 @@ if(NOT RTMIDI_LIBRARIES)
                   "C:/Program Files/rtmidi/include"
                   "${CMAKE_SOURCE_DIR}/external/rtmidi")
         find_library(RTMIDI_LIBRARIES NAMES rtmidi
-            PATHS /usr/lib /usr/local/lib /opt/homebrew/lib
+             PATHS /usr/lib /usr/local/lib /opt/homebrew/lib
                   "C:/Program Files/rtmidi/lib"
                   "${CMAKE_SOURCE_DIR}/external/rtmidi")
     endif()
@@ -214,11 +214,6 @@ endif()
 # =============================================================================
 # Target configuration: Emscripten (web) vs Native (desktop)
 # =============================================================================
-# =============================================================================
-# Shared helper: SDL2 for mobile builds (Android / iOS)
-# Prefer a pre-installed SDL2 (e.g. from CI cache via -DSDL2_DIR=...).
-# Fall back to building from source via FetchContent for local/first-time builds.
-# =============================================================================
 if(ANDROID OR IOS)
     find_package(SDL2 QUIET CONFIG)
     if(NOT TARGET SDL2::SDL2-static)
@@ -288,8 +283,6 @@ if(EMSCRIPTEN)
 elseif(ANDROID)
 
     # --- Android build: shared library loaded by SDLActivity via JNI ---
-    # SDL2 is linked statically so only libmain.so needs to be packaged.
-    # AmplitronActivity.java overrides getLibraries() to load only "main".
     add_library(main SHARED
         ${APP_SOURCES}
         ${MIDI_SOURCES}
@@ -367,7 +360,7 @@ elseif(IOS)
         "-framework Foundation"
         "-framework AVFoundation"
         iconv
-    )
+   )
 
     set_target_properties(Amplitron PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST              "${CMAKE_SOURCE_DIR}/ios/Info.plist"
@@ -393,7 +386,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
 
     add_executable(Amplitron ${APP_SOURCES} ${MIDI_SOURCES} ${BACKEND_SOURCES} ${DIALOG_SOURCES} ${IMGUI_SOURCES} ${KISS_FFT_SOURCES} $<$<PLATFORM_ID:Windows>:${WIN_RC}>)
 
-    target_include_directories(Amplitron PRIVATE
+     target_include_directories(Amplitron PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/external
         ${CMAKE_SOURCE_DIR}/external/kiss_fft
@@ -421,7 +414,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         else()
             set_target_properties(Amplitron PROPERTIES WIN32_EXECUTABLE TRUE)
         endif()
-    endif()
+     endif()
 
     if(UNIX AND NOT APPLE)
         target_link_libraries(Amplitron PRIVATE dl pthread)
@@ -439,14 +432,22 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         tests/test_snapshot_manager.cpp
         tests/test_ir_cabinet.cpp
         tests/test_midi_manager.cpp
+        tests/test_gui_presets.cpp       # <--- Added your new test file here
     )
 
-    # Effect + core sources needed by tests (no GUI, no main)
+    # Effect + core sources needed by tests
     set(CORE_SOURCES
         src/preset_manager.cpp
         src/preset_json.cpp
         src/preset_manager_dirs.cpp
         src/preset_manager_io.cpp
+        src/gui/gui_presets.cpp           # <--- Added to compile preset dirty assertions
+        src/gui/pedal_board.cpp           # <--- Added to satisfy PedalBoard::rebuild_widgets()
+        src/gui/pedal_board_menu.cpp
+        src/gui/pedal_board_chain.cpp
+        src/gui/pedal_widget.cpp          # <--- Added to satisfy PedalWidget dependencies
+        src/gui/pedal_widget_body.cpp
+        src/gui/pedal_widget_knobs.cpp
         src/audio/audio_engine.cpp
         src/audio/audio_engine_chain.cpp
         src/audio/audio_engine_process.cpp
@@ -487,7 +488,8 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         src/midi/midi_manager_persist.cpp
     )
 
-    add_executable(amplitron-tests ${TEST_SOURCES} ${CORE_SOURCES} ${KISS_FFT_SOURCES})
+    # Included ${IMGUI_SOURCES} here to fully resolve ImGui symbols in tests
+    add_executable(amplitron-tests ${TEST_SOURCES} ${CORE_SOURCES} ${KISS_FFT_SOURCES} ${IMGUI_SOURCES})
 
     target_include_directories(amplitron-tests PRIVATE
         ${CMAKE_SOURCE_DIR}/src
@@ -507,7 +509,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         ${SDL2_LIBRARIES}
         ${OPENGL_LIBRARIES}
         ${RTMIDI_LIBRARIES}
-    )
+   )
 
     if(WIN32)
         target_link_libraries(amplitron-tests PRIVATE winmm ole32 setupapi)
@@ -522,7 +524,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_SOURCE_DIR}/presets"
             "$<TARGET_FILE_DIR:Amplitron>/presets"
-        COMMENT "Copying presets to build directory"
+         COMMENT "Copying presets to build directory"
     )
     add_dependencies(copy_presets Amplitron)
 
