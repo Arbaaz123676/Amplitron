@@ -2,6 +2,7 @@
 #include "audio/audio_engine.h"
 #include "gui/gui_manager.h"
 #include "preset_manager.h"
+#include "cli.h"
 
 #include "audio/effects/noise_gate.h"
 #include "audio/effects/compressor.h"
@@ -52,7 +53,12 @@ void signal_handler(int /*signal*/) {
     g_running = false;
 }
 
-int main(int /*argc*/, char* /*argv*/[]) {
+
+int main(int argc, char* argv[]) {
+    if (Amplitron::handle_cli_args(argc, argv)) {
+        return 0;
+    }
+
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
@@ -129,6 +135,10 @@ int main(int /*argc*/, char* /*argv*/[]) {
         return 1;
     }
     
+    if (!engine.start()) {
+        std::cerr << "Warning: Could not start audio stream." << std::endl;
+    }
+
     if (!engine.start()) {
         std::cerr << "Warning: Could not start audio stream." << std::endl;
     }
