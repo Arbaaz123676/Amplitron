@@ -342,11 +342,8 @@ void PedalBoard::render_signal_chain() {
             std::string effect_name = "Mixer_" + std::to_string(node.id);
             std::string param_name = "Gain " + std::to_string(idx);
             if (gui_midi_) {
-              if (gui_midi_->render_remove_mapping_item(effect_name,
-                                                        param_name)) {
-              }
-              if (gui_midi_->render_learn_menu_item(effect_name, param_name)) {
-              }
+              gui_midi_->render_remove_mapping_item(effect_name, param_name);
+              gui_midi_->render_learn_menu_item(effect_name, param_name);
             } else {
               ImGui::TextDisabled("MIDI manager not available");
             }
@@ -545,8 +542,6 @@ void PedalBoard::render_signal_chain() {
             pow(mouse_pos.x - pin_pos.x, 2) + pow(mouse_pos.y - pin_pos.y, 2);
         if (dist_sq < pow(15.0f * ui_state.zoom, 2) &&
             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-          printf("MANUAL DROP HOVER DETECTED! src: %d, dest: %d\n",
-                 ui_state.active_src_pin_id, pin_id);
           if (ui_state.active_src_pin_id != -1) {
             history_.execute(std::make_unique<AddGraphLinkCommand>(
                 engine_, ui_state.active_src_pin_id, pin_id));
@@ -692,8 +687,8 @@ void PedalBoard::render_signal_chain() {
   if (ui_state.active_src_pin_id != -1) {
     ImVec2 mouse_pos = ImGui::GetMousePos();
     ImVec2 p1 = ui_state.active_src_pin_pos;
-    ImVec2 cp1 = ImVec2(p1.x + 45.0f, p1.y);
-    ImVec2 cp2 = ImVec2(mouse_pos.x - 45.0f, mouse_pos.y);
+    ImVec2 cp1 = ImVec2(p1.x + 45.0f * ui_state.zoom, p1.y);
+    ImVec2 cp2 = ImVec2(mouse_pos.x - 45.0f * ui_state.zoom, mouse_pos.y);
     draw_list->AddBezierCubic(p1, cp1, cp2, mouse_pos,
                               IM_COL32(255, 255, 255, 160), 2.0f, 0);
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {

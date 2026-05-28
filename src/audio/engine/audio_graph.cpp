@@ -15,7 +15,7 @@ int AudioGraph::add_node(const std::string &name, NodeRoutingType type,
 
   // Dynamically configure pin structures using the same unified ID pool
   if (type == NodeRoutingType::Mixer || type == NodeRoutingType::MergeSum) {
-    int inputs_to_create = (num_inputs > 0) ? num_inputs : 2;
+    int inputs_to_create = std::clamp((num_inputs > 0) ? num_inputs : 2, 2, 8);
     for (int i = 0; i < inputs_to_create; ++i) {
       node.input_pin_ids.push_back(next_id_++);
     }
@@ -362,6 +362,9 @@ bool AudioGraph::remove_input_pin(int node_id, int pin_id) {
   for (auto &node : nodes_) {
     if (node.id == node_id && (node.routing_type == NodeRoutingType::Mixer || node.routing_type == NodeRoutingType::MergeSum)) {
       if (node.input_pin_ids.size() > 2) {
+        if (node.input_gains.size() < node.input_pin_ids.size()) {
+            node.input_gains.resize(node.input_pin_ids.size(), 1.0f);
+        }
         int index_to_remove = -1;
         if (pin_id == -1) {
            index_to_remove = node.input_pin_ids.size() - 1;

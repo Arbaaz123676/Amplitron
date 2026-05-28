@@ -242,7 +242,9 @@ void MidiManager::apply_mapping(const MidiMapping& mapping, int cc_value,
                 try { node_id = std::stoi(mapping.effect_name.substr(6)); } catch(...) {}
                 if (node_id != -1) {
                     int pin_idx = -1;
-                    try { pin_idx = std::stoi(mapping.param_name.substr(5)); } catch(...) {}
+                    if (mapping.param_name.find("Gain ") == 0) {
+                        try { pin_idx = std::stoi(mapping.param_name.substr(5)); } catch(...) {}
+                    }
                     if (pin_idx != -1) {
                         float gain = normalized * 2.0f;
                         engine.graph().set_mixer_input_gain(node_id, pin_idx, gain);

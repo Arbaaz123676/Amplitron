@@ -174,10 +174,11 @@ void AudioGraphExecutor::process(const float* input, float* output, int num_samp
 
 void AudioGraphExecutor::update_mixer_gain(int node_id, int pin_index, float gain) {
     for (auto& step : execution_plan_) {
-        if (step.node_id == node_id) {
+        if (step.node_id == node_id && (step.type == NodeRoutingType::Mixer || step.type == NodeRoutingType::MergeSum)) {
             for (auto& src : step.input_sources) {
                 if (src.pin_index == pin_index) {
-                    src.gain = gain;
+                    src.gain = std::clamp(gain, 0.0f, 2.0f);
+                    break;
                 }
             }
             break;
