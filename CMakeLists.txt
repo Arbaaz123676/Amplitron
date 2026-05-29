@@ -766,7 +766,16 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
     )
 
     if(WITH_JACK AND UNIX AND NOT APPLE)
-        target_compile_definitions(amplitron-tests PRIVATE WITH_JACK)
+        target_compile_definitions(amplitron-tests PRIVATE 
+            WITH_JACK
+            "jack_client_open=MOCK_jack_client_open"
+            "jack_client_close=MOCK_jack_client_close"
+            "jack_port_register=MOCK_jack_port_register"
+            "jack_set_process_callback=MOCK_jack_set_process_callback"
+            "jack_activate=MOCK_jack_activate"
+            "jack_deactivate=MOCK_jack_deactivate"
+            "jack_port_get_buffer=MOCK_jack_port_get_buffer"
+        )
     endif()
 
 
