@@ -70,9 +70,7 @@ void PitchShifter::process(float* buffer, int num_samples) {
         // Exit immediately
         return; 
     }
-
-    const float alpha = 1.0f - std::exp(-1.0f / (sample_rate_ * 0.010f));
-
+    
     // Smooth parameters
     // Hoisting: Calculate smoothing and std::pow ONCE per block, not per sample
     const float block_alpha = 1.0f - std::exp(-static_cast<float>(num_samples) / (sample_rate_ * 0.010f));
