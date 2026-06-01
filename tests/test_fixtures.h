@@ -28,11 +28,13 @@ public:
         
         ImGui::StyleColorsDark();
         ImGui::NewFrame();
+        ImGui::SetNextWindowSize(ImVec2(1024, 768));
+        ImGui::Begin("##root", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration);
     }
 
     ~ScopedImGuiContext() {
         if (ImGui::GetCurrentContext()) {
-            ImGui::GetStyle() = ImGuiStyle();
+            ImGui::End();
             ImGui::EndFrame();
             ImGui::DestroyContext(ctx_);
             ctx_ = nullptr;
