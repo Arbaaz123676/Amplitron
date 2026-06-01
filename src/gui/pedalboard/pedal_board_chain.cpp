@@ -125,6 +125,7 @@ void PedalBoard::render_signal_chain() {
     if (!found) { stale_ids.push_back(it->first); it = ui_state.node_positions.erase(it); }
     else ++it;
   }
+  draw_list->PushClipRect(canvas_pos, canvas_end, true);
   ImVec2 offset(canvas_pos.x + ui_state.scrolling.x, canvas_pos.y + ui_state.scrolling.y);
   for (int id : stale_ids) {
     ui_state.node_positions.erase(id);

@@ -27,16 +27,11 @@ public:
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
         
         ImGui::NewFrame();
-        ImGui::Begin("Test Root Window");
     }
 
     ~ScopedImGuiContext() {
-        if (ImGui::GetCurrentContext()) {
-            ImGui::End();
-            ImGui::Render();
-            ImGui::DestroyContext(ctx_);
-            ctx_ = nullptr;
-        }
+        ImGui::Render();
+        ImGui::DestroyContext(ctx_);
     }
 
 private:
