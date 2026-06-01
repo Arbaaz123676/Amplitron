@@ -684,6 +684,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         tests/unit/test_looper.cpp
         tests/unit/test_theme.cpp
         tests/unit/test_command_history.cpp
+        tests/unit/test_effect_base.cpp
         tests/unit/test_cabinet_sim_ir.cpp
         tests/unit/test_wav_loader.cpp
         tests/unit/test_convolution_engine.cpp
