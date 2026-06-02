@@ -4,8 +4,10 @@
 #include <memory>
 #include <cmath>
 #include <functional>
+#include <imgui_internal.h>
 
 #include "gui/components/knob.h"
+
 
 using namespace Amplitron;
 using namespace TestFramework;
@@ -457,3 +459,370 @@ TEST_F(PresetTest, KnobComponent_Hover_EmptyTooltip_ShowsGenericTooltip) {
     // Hover is hit, coverage obtained
     ImGui::End();
 }
+
+TEST_F(PresetTest, KnobComponent_RangeZero) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    float val = 50.0f;
+    KnobProps props;
+    props.name = "ZeroRange"; props.value = val; props.min_val = 50.0f; props.max_val = 50.0f; props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+
+    ImVec2 center(200, 200);
+    KnobComponent::render("KZero", props, 1.0f, center);
+    advance_frame();
+    ImGui::End();
+}
+
+TEST_F(PresetTest, KnobComponent_AngularDrag_AngleWrapAround) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    float val = 50.0f;
+    KnobProps props;
+    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+
+    ImVec2 center(200, 200);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // 1. Wrap-around positive: angle jumps from -PI to PI
+    // Start drag at left side (angle ~ -3.09 rad)
+    io.MousePos = ImVec2(center.x - 20.0f, center.y - 1.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    // Drag to other side of the left boundary (angle ~ 3.09 rad)
+    io.MouseClicked[0] = false;
+    io.MousePos = ImVec2(center.x - 20.0f, center.y + 1.0f);
+    io.MouseDelta = ImVec2(0.0f, 2.0f);
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    // 2. Wrap-around negative: angle jumps from PI to -PI
+    io.MousePos = ImVec2(center.x - 20.0f, center.y + 1.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.MousePos = ImVec2(center.x - 20.0f, center.y - 1.0f);
+    io.MouseDelta = ImVec2(0.0f, -2.0f);
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    KnobComponent::render("KWrap", props, 1.0f, center);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, KnobComponent_NullCallbacks) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    KnobProps props;
+    props.name = "Gain"; props.value = 50.0f; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+
+    ImVec2 center(200, 200);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Drag knob
+    io.MousePos = center;
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KNull", props, 1.0f, center);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.MouseDelta = ImVec2(0.0f, 10.0f);
+    io.MousePos = ImVec2(center.x, center.y + 10.0f);
+    KnobComponent::render("KNull", props, 1.0f, center);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    KnobComponent::render("KNull", props, 1.0f, center);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, KnobComponent_CtrlModifierDrag) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    float val1 = 50.0f;
+    KnobProps props1;
+    props1.name = "Gain"; props1.value = val1; props1.min_val = 0.0f; props1.max_val = 100.0f; props1.default_val = 50.0f;
+    props1.on_value_changed = [&](float v) { val1 = v; props1.value = v; };
+
+    ImVec2 center(200, 200);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Normal drag
+    io.MousePos = center;
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KCtrl1", props1, 1.0f, center);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.MouseDelta = ImVec2(0.0f, 10.0f);
+    io.MousePos = ImVec2(center.x, center.y + 10.0f);
+    KnobComponent::render("KCtrl1", props1, 1.0f, center);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    KnobComponent::render("KCtrl1", props1, 1.0f, center);
+    advance_frame();
+
+    // Drag with Ctrl
+    float val2 = 50.0f;
+    KnobProps props2;
+    props2.name = "Gain"; props2.value = val2; props2.min_val = 0.0f; props2.max_val = 100.0f; props2.default_val = 50.0f;
+    props2.on_value_changed = [&](float v) { val2 = v; props2.value = v; };
+
+    io.MousePos = center;
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KCtrl2", props2, 1.0f, center);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.KeyCtrl = true;
+    io.MouseDelta = ImVec2(0.0f, 10.0f);
+    io.MousePos = ImVec2(center.x, center.y + 10.0f);
+    KnobComponent::render("KCtrl2", props2, 1.0f, center);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    io.KeyCtrl = false;
+    KnobComponent::render("KCtrl2", props2, 1.0f, center);
+    advance_frame();
+
+    ImGui::End();
+
+    float diff_normal = 50.0f - val1;
+    float diff_ctrl = 50.0f - val2;
+    ASSERT_NEAR(diff_ctrl, 3.0f * diff_normal, 0.01f);
+}
+
+TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+
+    float val = 50.0f;
+    float commit_old = 0.0f;
+    float commit_new = 0.0f;
+    KnobProps props;
+    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+    props.on_value_committed = [&](float o, float n) { commit_old = o; commit_new = n; };
+
+    ImVec2 center(200, 200);
+
+    // Frame 1: Render normally
+    KnobComponent::render("KPopSlider", props, 1.0f, center);
+    advance_frame();
+
+    // Frame 2: Open popup manually
+    ImGui::OpenPopup("Popup_KPopSlider");
+    KnobComponent::render("KPopSlider", props, 1.0f, center);
+    advance_frame();
+
+    // Frame 3: Activate the slider inside popup
+    ImGui::PushID("Popup_KPopSlider");
+    ImGuiID slider_id = ImGui::GetID("##edit");
+    ImGui::PopID();
+
+    ImGuiContext& g = *GImGui;
+    g.ActiveId = slider_id;
+    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdIsJustActivated = true;
+    props.value = 60.0f; // edit value
+
+    KnobComponent::render("KPopSlider", props, 1.0f, center);
+    advance_frame();
+
+    // Frame 4: Deactivate the slider with edit flag set
+    g.ActiveIdPreviousFrame = slider_id;
+    g.ActiveId = 0;
+    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
+    props.value = 70.0f; // final value
+
+    KnobComponent::render("KPopSlider", props, 1.0f, center);
+    advance_frame();
+
+    ImGui::End();
+
+    ASSERT_NEAR(val, 70.0f, 0.01f);
+    ASSERT_NEAR(commit_new, 70.0f, 0.01f);
+}
+
+TEST_F(PresetTest, KnobComponent_PopupResetButton) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    float val = 80.0f;
+    float commit_old = 0.0f;
+    float commit_new = 0.0f;
+    KnobProps props;
+    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+    props.on_value_committed = [&](float o, float n) { commit_old = o; commit_new = n; };
+
+    ImVec2 center(200, 200);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Frame 1: Render normally
+    KnobComponent::render("KPopReset", props, 1.0f, center);
+    advance_frame();
+
+    // Frame 2: Right click to open popup
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    KnobComponent::render("KPopReset", props, 1.0f, center);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    // Frame 3: Click Reset button
+    io.MousePos = ImVec2(250, 260);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KPopReset", props, 1.0f, center);
+    advance_frame();
+
+    // Frame 4: Release button
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    KnobComponent::render("KPopReset", props, 1.0f, center);
+    advance_frame();
+
+    ImGui::End();
+
+    ASSERT_NEAR(val, 50.0f, 0.01f);
+    ASSERT_NEAR(commit_new, 50.0f, 0.01f);
+}
+
+TEST_F(PresetTest, KnobComponent_PopupMidiLearnItems) {
+    ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
+    ImGui::Begin("TestWindow");
+
+    bool learn_p = false;
+    bool clear_p = false;
+    bool learn_b = false;
+    bool clear_b = false;
+
+    KnobProps props;
+    props.name = "Gain"; props.value = 50.0f; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.on_midi_learn_param = [&]() { learn_p = true; };
+    props.on_midi_clear_param = [&]() { clear_p = true; };
+    props.on_midi_learn_bypass = [&]() { learn_b = true; };
+    props.on_midi_clear_bypass = [&]() { clear_b = true; };
+    props.midi_info = "";
+
+    ImVec2 center(200, 200);
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Frame 1: Render normally
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+
+    // 1. Click "MIDI Learn Parameter"
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    io.MousePos = ImVec2(220, 300);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    advance_frame();
+
+    // 2. Click "MIDI Learn Bypass Toggle"
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    io.MousePos = ImVec2(220, 325);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    advance_frame();
+
+    // 3. Click "Remove MIDI Mapping" and "Remove Bypass Mapping"
+    props.midi_info = "CC 7";
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    io.MousePos = ImVec2(220, 300);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    advance_frame();
+
+    // Open again for bypass mapping clear
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    io.MousePos = ImVec2(220, 345);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    advance_frame();
+
+    ImGui::End();
+
+    ASSERT_TRUE(learn_p);
+    ASSERT_TRUE(clear_p);
+    ASSERT_TRUE(learn_b);
+    ASSERT_TRUE(clear_b);
+}
+
+
