@@ -4,10 +4,12 @@
 #include <memory>
 #include <cmath>
 #include <functional>
+#include <imgui_internal.h>
 
 #include "gui/components/screen.h"
 #include "gui/views/gui_midi.h"
 #include "midi/midi_manager.h"
+
 
 #define private public
 #include "audio/effects/tuner.h"
@@ -907,3 +909,393 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
 
     ImGui::End();
 }
+
+TEST_F(PresetTest, ScreenComponent_NullEffect) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    ScreenProps props;
+    props.effect = nullptr;
+    props.type = ScreenType::Tuner;
+
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ImGui::End();
+}
+
+TEST_F(PresetTest, TunerDisplay_SignalDetected_Tuning) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto tuner = std::make_shared<TunerPedal>();
+    tuner->signal_detected.store(true);
+    tuner->detected_note.store(4); // E
+    tuner->detected_octave.store(2);
+    tuner->detected_freq.store(82.4f);
+
+    ScreenProps props;
+    props.index = 1;
+    props.type = ScreenType::Tuner;
+    props.effect = tuner;
+
+    // 1. Cents error < 2.0f
+    tuner->detected_cents.store(1.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // 2. Cents error < 15.0f
+    tuner->detected_cents.store(-10.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // 3. Cents error >= 15.0f
+    tuner->detected_cents.store(30.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_LessParams) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_.clear();
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_MBKnobRangeZero) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_[2].min_val = 0.0f;
+    comp->params_[2].max_val = 0.0f;
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
+
+    io.MousePos = center;
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.MousePos.y += 10.0f;
+    io.MouseDelta.y = 10.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_MBKnobScrollAtBoundary) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_[2].value = comp->params_[2].max_val;
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
+
+    io.MousePos = center;
+    io.MouseWheel = 1.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseWheel = 0.0f;
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_MBKnobDoubleClickAtDefault) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_[2].value = comp->params_[2].default_val;
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
+
+    io.MousePos = center;
+    io.MouseDoubleClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseDoubleClicked[0] = false;
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_[2].value = 0.0f;
+
+    MidiManager midi_manager;
+    GuiMidi gui_midi(midi_manager);
+
+    bool commit_called = false;
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+    props.gui_midi = &gui_midi;
+    props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
+
+    ImGuiIO& io = ImGui::GetIO();
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
+
+    // Frame 1: Render normally to register knob position
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 2: Open popup by right-click
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    // Frame 3: Drag the slider in the popup
+    io.MousePos = ImVec2(center.x + 30.0f, center.y + 25.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseClicked[0] = false;
+    io.MousePos.x += 20.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 4: Open popup again for Reset button click
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    io.MousePos = ImVec2(center.x + 30.0f, center.y + 50.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    advance_frame();
+
+    // Frame 5: Test null gui_midi path (opens popup, falls back to text)
+    props.gui_midi = nullptr;
+    io.MousePos = center;
+    io.MouseClicked[1] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseClicked[1] = false;
+
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+    comp->params_[0].value = 400.0f;
+    comp->params_[1].value = 500.0f;
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    ImGuiIO& io = ImGui::GetIO();
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    float x1 = p0.x + 12.0f * 1.0f + col_width;
+    float x2 = p0.x + 12.0f * 1.0f + 2.0f * col_width;
+    float track_top = p0.y + 90.0f * 1.0f;
+    float track_bottom = p0.y + 260.0f * 1.0f;
+
+    io.MousePos = ImVec2(x1, track_top + 10.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MousePos = ImVec2(x2, track_bottom - 10.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseDown[0] = false;
+    io.MouseClicked[0] = false;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MousePos = ImVec2(x1, track_top + 50.0f);
+    io.MouseWheel = 10.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseWheel = 0.0f;
+
+    io.MousePos = ImVec2(x2, track_top + 150.0f);
+    io.MouseWheel = -10.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseWheel = 0.0f;
+
+    comp->params_[1].value = 100.0f;
+    io.MousePos = ImVec2(x1, track_top + 50.0f);
+    io.MouseDoubleClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseDoubleClicked[0] = false;
+
+    comp->params_[1].value = 5000.0f;
+    comp->params_[0].value = 10000.0f;
+    io.MousePos = ImVec2(x2, track_top + 50.0f);
+    io.MouseDoubleClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseDoubleClicked[0] = false;
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, MultiBandCompressor_MeterColors) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto comp = std::make_shared<MultiBandCompressor>();
+
+    ScreenProps props;
+    props.index = 4;
+    props.type = ScreenType::MultiBandCompressor;
+    props.effect = comp;
+
+    comp->gain_reduction_db_[0].store(4.0f, std::memory_order_relaxed);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    comp->gain_reduction_db_[0].store(8.0f, std::memory_order_relaxed);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    comp->gain_reduction_db_[0].store(15.0f, std::memory_order_relaxed);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGui::End();
+}
+
+TEST_F(PresetTest, LooperDisplay_IdleState_And_DeactivateEdit) {
+    ScopedImGuiContext imgui;
+    ImGui::Begin("TestWindow");
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p0 = ImVec2(100, 100);
+
+    auto looper = std::make_shared<Looper>();
+    looper->ui_state_.store(static_cast<uint32_t>(Looper::State::Idle));
+
+    bool commit_called = false;
+    ScreenProps props;
+    props.index = 3;
+    props.type = ScreenType::Looper;
+    props.effect = looper;
+    props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
+
+    // Frame 1: Render normally to register slider ID
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 2: Activate the slider (set ActiveId = slider_id)
+    ImGuiID slider_id = ImGui::GetID("##looper_level_3");
+    ImGuiContext& g = *GImGui;
+    g.ActiveId = slider_id;
+    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdIsJustActivated = true;
+    
+    // Render to trigger IsItemActivated() inside screen.cpp
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 3: Deactivate the slider with edit flag set
+    g.ActiveIdPreviousFrame = slider_id;
+    g.ActiveId = 0;
+    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
+    looper->params()[0].value = 0.5f; // value changed
+    
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGui::End();
+
+    ASSERT_TRUE(commit_called);
+}
+
