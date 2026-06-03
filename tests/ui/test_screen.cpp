@@ -273,33 +273,22 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleClick_TogglesParamAndPushesToEngine) {
     props.type = ScreenType::Tuner;
     props.effect = tuner;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float cx = p0.x + 220.0f * 0.5f;
-    float display_y = p0.y + 55 * 1.0f + 45 * 1.0f + 22 * 1.0f + 8 * 1.0f;
-    
-    // Simulate click
-    io.MousePos = ImVec2(cx, display_y + 5.0f);
+    ImGuiContext& g = *GImGui;
+
+    // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
+
+    // Trigger click programmatically
+    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
+    g.NavActivateId = mute_toggle_id;
+    g.NavActivateDownId = mute_toggle_id;
+    g.NavActivatePressedId = mute_toggle_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    // Headless ImGui occasionally has issues resolving overlapped hitboxes with TextUnformatted.
-    // For coverage verification purposes, we'll assert that the initial state is 0,
-    // and manually simulate the click effect if ImGui failed to register it.
-    if (tuner->params()[0].value < 0.5f) {
-        tuner->params()[0].value = 1.0f;
-    }
+
     ASSERT_EQ(tuner->params()[0].value, 1.0f);
-    
     ImGui::End();
 }
 
@@ -316,20 +305,18 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
     props.type = ScreenType::Tuner;
     props.effect = tuner;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float cx = p0.x + 220.0f * 0.5f;
-    float display_y = p0.y + 55 * 1.0f + 45 * 1.0f + 22 * 1.0f + 8 * 1.0f;
-    
-    // Simulate hover
-    io.MousePos = ImVec2(cx, display_y + 10.0f);
-    
+    ImGuiContext& g = *GImGui;
+
+    // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    // advance frame sets tooltip
     advance_frame();
-    
-    // Tooltip should be visible
-    // We cannot easily assert tooltip contents in ImGui 1.89+ headless cleanly without internal API,
-    // but running the branch provides the coverage!
+
+    // Set HoveredId programmatically
+    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
+    g.HoveredId = mute_toggle_id;
+
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
     ImGui::End();
 }
 
@@ -346,12 +333,16 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
     props.type = ScreenType::Tuner;
     props.effect = tuner;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float cx = p0.x + 220.0f * 0.5f;
-    float display_y = p0.y + 55 * 1.0f + 45 * 1.0f + 22 * 1.0f + 8 * 1.0f;
-    
-    io.MousePos = ImVec2(cx, display_y + 10.0f);
-    
+    ImGuiContext& g = *GImGui;
+
+    // Render once to layout items
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Set HoveredId programmatically
+    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
+    g.HoveredId = mute_toggle_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -537,21 +528,18 @@ TEST_F(PresetTest, LooperDisplay_RecordButton_Click_CallsRequestRecordToggle) {
     props.type = ScreenType::Looper;
     props.effect = looper;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_y = p0.y + 55 * 1.0f + 18 * 1.0f + 16 * 1.0f + 10.0f;
-    
-    // Simulate hover for tooltip
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + 10.0f, btn_y);
+    ImGuiContext& g = *GImGui;
+
+    // Render normally first
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Click Record button programmatically
+    ImGuiID btn_id = ImGui::GetID("Record##looper_rec_3");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -569,21 +557,18 @@ TEST_F(PresetTest, LooperDisplay_PlayButton_Click_CallsRequestPlayToggle) {
     props.type = ScreenType::Looper;
     props.effect = looper;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_y = p0.y + 55 * 1.0f + 18 * 1.0f + 16 * 1.0f + 10.0f;
-    float btn_w = (220.0f - 30 * 1.0f - 8.0f * 1.0f) * 0.5f;
-    
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + btn_w + 8.0f * 1.0f + 10.0f, btn_y);
+    ImGuiContext& g = *GImGui;
+
+    // Render normally first
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Click Play button programmatically
+    ImGuiID btn_id = ImGui::GetID("Play/Stop##looper_play_3");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -601,20 +586,18 @@ TEST_F(PresetTest, LooperDisplay_OverdubButton_Click_CallsRequestOverdubToggle) 
     props.type = ScreenType::Looper;
     props.effect = looper;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_y = p0.y + 55 * 1.0f + 18 * 1.0f + 16 * 1.0f + 22.0f * 1.0f + 6 * 1.0f + 10.0f;
-    
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + 10.0f, btn_y);
+    ImGuiContext& g = *GImGui;
+
+    // Render normally first
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Click Overdub button programmatically
+    ImGuiID btn_id = ImGui::GetID("Overdub##looper_dub_3");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -632,21 +615,18 @@ TEST_F(PresetTest, LooperDisplay_ClearButton_Click_CallsRequestClear) {
     props.type = ScreenType::Looper;
     props.effect = looper;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_y = p0.y + 55 * 1.0f + 18 * 1.0f + 16 * 1.0f + 22.0f * 1.0f + 6 * 1.0f + 10.0f;
-    float btn_w = (220.0f - 30 * 1.0f - 8.0f * 1.0f) * 0.5f;
-    
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + btn_w + 8.0f * 1.0f + 10.0f, btn_y);
+    ImGuiContext& g = *GImGui;
+
+    // Render normally first
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Click Clear button programmatically
+    ImGuiID btn_id = ImGui::GetID("Clear##looper_clear_3");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -674,31 +654,30 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
     };
 
     ImGuiIO& io = ImGui::GetIO();
-    float slider_y = p0.y + 55 * 1.0f + 18 * 1.0f + 16 * 1.0f + 22.0f * 1.0f + 6 * 1.0f + 22.0f * 1.0f + 8 * 1.0f + 5.0f;
+    float slider_y = p0.y + 152.0f;
     
-    // Simulate hover for tooltip
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + 10.0f, slider_y);
-    
-    // Click and drag slider
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
+    // Frame 1: Set hover pos
+    io.MousePos = ImVec2(p0.x + 30.0f, slider_y + 4.0f);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
+    // Frame 2: Mouse click down on slider
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 3: Drag mouse right
     io.MouseClicked[0] = false;
     io.MousePos.x += 50.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
+    // Frame 4: Release mouse
     io.MouseDown[0] = false;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    // Headless slider dragging is flaky without exact bounding box coordinates.
-    // For coverage, the state rendering is verified.
-    if (!commit_called) {
-        commit_called = true; 
-    }
+
     ASSERT_TRUE(commit_called);
     ImGui::End();
 }
@@ -1078,7 +1057,8 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params_[2].value = 0.0f;
+    comp->params_[2].value = -10.0f; // threshold default is typically 0.0f, let's change it
+    comp->params_[2].default_val = 0.0f;
 
     MidiManager midi_manager;
     GuiMidi gui_midi(midi_manager);
@@ -1091,61 +1071,72 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     props.gui_midi = &gui_midi;
     props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
 
-    ImGuiIO& io = ImGui::GetIO();
-    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
-    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
+    ImGuiContext& g = *GImGui;
 
-    // Frame 1: Render normally to register knob position
+    // Render normally first to register knob state
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Frame 2: Open popup by right-click
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    io.MouseClicked[1] = false;
+    // 1. Slider interaction
+    char popup_id[128];
+    std::snprintf(popup_id, sizeof(popup_id), "##knob_%s_%d_%d_%s", comp->name(), 4, 2, "thresh");
 
-    // Frame 3: Drag the slider in the popup
-    io.MousePos = ImVec2(center.x + 30.0f, center.y + 25.0f);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    // Open popup
+    ImGui::OpenPopup(popup_id);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    io.MouseClicked[0] = false;
-    io.MousePos.x += 20.0f;
+    // Find slider ID
+    ImGui::PushID(popup_id);
+    ImGuiID slider_id = ImGui::GetID("##edit");
+    ImGui::PopID();
+
+    // Activate slider programmatically via Nav to avoid click-outside closure
+    g.ActiveId = slider_id;
+    g.ActiveIdSource = ImGuiInputSource_Keyboard;
+    g.ActiveIdIsJustActivated = true;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    io.MouseDown[0] = false;
+    // Deactivate slider with edit flag set
+    g.ActiveId = 0;
+    g.ActiveIdPreviousFrame = slider_id;
+    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
+    comp->params_[2].value = -15.0f; // changed value
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Frame 4: Open popup again for Reset button click
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
+    ASSERT_TRUE(commit_called);
+    commit_called = false;
+
+    // 2. Reset button interaction
+    // Open popup again
+    ImGui::OpenPopup(popup_id);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    io.MouseClicked[1] = false;
 
-    io.MousePos = ImVec2(center.x + 30.0f, center.y + 50.0f);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    // Find Reset button ID
+    ImGui::PushID(popup_id);
+    ImGuiID reset_id = ImGui::GetID("Reset");
+    ImGui::PopID();
+
+    // Click Reset programmatically via Nav
+    g.NavActivateId = reset_id;
+    g.NavActivateDownId = reset_id;
+    g.NavActivatePressedId = reset_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
-    advance_frame();
 
-    // Frame 5: Test null gui_midi path (opens popup, falls back to text)
+    // Threshold value should reset to 0.0f
+    ASSERT_NEAR(comp->params_[2].value, 0.0f, 0.01f);
+    ASSERT_TRUE(commit_called);
+
+    // 3. Test null gui_midi path (falls back to text in popup)
     props.gui_midi = nullptr;
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    io.MouseClicked[1] = false;
-
+    ImGui::OpenPopup(popup_id);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
@@ -1270,26 +1261,29 @@ TEST_F(PresetTest, LooperDisplay_IdleState_And_DeactivateEdit) {
     props.effect = looper;
     props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
 
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiContext& g = *GImGui;
+
     // Frame 1: Render normally to register slider ID
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     // Frame 2: Activate the slider (set ActiveId = slider_id)
     ImGuiID slider_id = ImGui::GetID("##looper_level_3");
-    ImGuiContext& g = *GImGui;
+    io.MouseDown[0] = true;
     g.ActiveId = slider_id;
     g.ActiveIdSource = ImGuiInputSource_Mouse;
     g.ActiveIdIsJustActivated = true;
+    g.ActiveIdHasBeenEditedBefore = true;
     
     // Render to trigger IsItemActivated() inside screen.cpp
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     // Frame 3: Deactivate the slider with edit flag set
-    g.ActiveIdPreviousFrame = slider_id;
-    g.ActiveId = 0;
-    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
-    looper->params()[0].value = 0.5f; // value changed
+    io.MouseDown[0] = false;
+    float current_val = looper->params()[0].value;
+    looper->params()[0].value = current_val + 0.1f; // changed value
     
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
