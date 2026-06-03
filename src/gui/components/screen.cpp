@@ -160,8 +160,7 @@ void ScreenComponent::render_tuner_display(ImDrawList* dl, ImVec2 p0, float peda
 
         ImGui::SetCursorScreenPos(ImVec2(cx - ml_size.x * 0.5f, display_y));
         ImGui::SetNextItemAllowOverlap();
-        ImGui::InvisibleButton("##tuner_mute_toggle", ml_size);
-        if (ImGui::IsItemClicked()) {
+        if (ImGui::InvisibleButton("##tuner_mute_toggle", ml_size)) {
             float new_val = mute_on ? 0.0f : 1.0f;
             props.effect->params()[0].value = new_val;
             if (props.engine) {
