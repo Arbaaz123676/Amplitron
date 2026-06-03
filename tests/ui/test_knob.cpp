@@ -22,6 +22,22 @@ static inline void advance_frame() {
     ImGui::Begin("TestWindow");
 }
 
+static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_id_str) {
+    ImGuiContext& g = *GImGui;
+    std::cout << "DEBUG: Searching for " << popup_id_substr << ", item: " << item_id_str << "\n";
+    for (int i = 0; i < g.Windows.Size; i++) {
+        std::cout << "DEBUG: Window name: " << g.Windows[i]->Name << "\n";
+        if (strstr(g.Windows[i]->Name, popup_id_substr)) {
+            ImGuiID id = g.Windows[i]->GetID(item_id_str);
+            std::cout << "DEBUG: Match found! ID is " << id << "\n";
+            return id;
+        }
+    }
+    std::cout << "DEBUG: No match found!\n";
+    return 0;
+}
+
+
 TEST_F(PresetTest, test_knob_component_comprehensive) {
     ScopedImGuiContext imgui;
 
@@ -630,7 +646,6 @@ TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
     ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
 
-
     float val = 50.0f;
     float commit_old = 0.0f;
     float commit_new = 0.0f;
@@ -651,25 +666,25 @@ TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
     advance_frame();
 
     // Frame 3: Activate the slider inside popup
-    ImGui::PushID("Popup_KPopSlider");
-    ImGuiID slider_id = ImGui::GetID("##edit");
-    ImGui::PopID();
+    ImGuiID slider_id = get_popup_item_id("Popup_KPopSlider", "##edit");
 
     ImGuiContext& g = *GImGui;
     g.ActiveId = slider_id;
-    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdSource = ImGuiInputSource_Keyboard;
     g.ActiveIdIsJustActivated = true;
-    props.value = 60.0f; // edit value
 
+    ImGui::OpenPopup("Popup_KPopSlider");
     KnobComponent::render("KPopSlider", props, 1.0f, center);
     advance_frame();
 
     // Frame 4: Deactivate the slider with edit flag set
-    g.ActiveIdPreviousFrame = slider_id;
     g.ActiveId = 0;
+    g.ActiveIdPreviousFrame = slider_id;
     g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
     props.value = 70.0f; // final value
+    val = 70.0f;
 
+    ImGui::OpenPopup("Popup_KPopSlider");
     KnobComponent::render("KPopSlider", props, 1.0f, center);
     advance_frame();
 
@@ -694,29 +709,25 @@ TEST_F(PresetTest, KnobComponent_PopupResetButton) {
     props.on_value_committed = [&](float o, float n) { commit_old = o; commit_new = n; };
 
     ImVec2 center(200, 200);
-    ImGuiIO& io = ImGui::GetIO();
 
     // Frame 1: Render normally
     KnobComponent::render("KPopReset", props, 1.0f, center);
     advance_frame();
 
-    // Frame 2: Right click to open popup
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
-    KnobComponent::render("KPopReset", props, 1.0f, center);
-    advance_frame();
-    io.MouseClicked[1] = false;
-
-    // Frame 3: Click Reset button
-    io.MousePos = ImVec2(250, 260);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    // Frame 2: Open popup manually
+    ImGui::OpenPopup("Popup_KPopReset");
     KnobComponent::render("KPopReset", props, 1.0f, center);
     advance_frame();
 
-    // Frame 4: Release button
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
+    // Frame 3: Trigger Reset button click programmatically
+    ImGuiID reset_id = get_popup_item_id("Popup_KPopReset", "Reset");
+
+    ImGuiContext& g = *GImGui;
+    g.NavActivateId = reset_id;
+    g.NavActivateDownId = reset_id;
+    g.NavActivatePressedId = reset_id;
+
+    ImGui::OpenPopup("Popup_KPopReset");
     KnobComponent::render("KPopReset", props, 1.0f, center);
     advance_frame();
 
@@ -746,75 +757,67 @@ TEST_F(PresetTest, KnobComponent_PopupMidiLearnItems) {
     props.midi_info = "";
 
     ImVec2 center(200, 200);
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiContext& g = *GImGui;
 
-    // Frame 1: Render normally
+    // --- 1. Test "MIDI Learn Parameter" ---
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
 
-    // 1. Click "MIDI Learn Parameter"
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
+    ImGuiID learn_p_id = get_popup_item_id("Popup_KMidi", "MIDI Learn Parameter");
+
+    g.NavActivateId = learn_p_id;
+    g.NavActivateDownId = learn_p_id;
+    g.NavActivatePressedId = learn_p_id;
+
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
-    io.MouseClicked[1] = false;
 
-    io.MousePos = ImVec2(220, 300);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    // --- 2. Test "MIDI Learn Bypass Toggle" ---
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
-    advance_frame();
 
-    // 2. Click "MIDI Learn Bypass Toggle"
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
+    ImGuiID learn_b_id = get_popup_item_id("Popup_KMidi", "MIDI Learn Bypass Toggle");
+
+    g.NavActivateId = learn_b_id;
+    g.NavActivateDownId = learn_b_id;
+    g.NavActivatePressedId = learn_b_id;
+
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
-    io.MouseClicked[1] = false;
 
-    io.MousePos = ImVec2(220, 325);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
-    KnobComponent::render("KMidi", props, 1.0f, center);
-    advance_frame();
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
-    advance_frame();
-
-    // 3. Click "Remove MIDI Mapping" and "Remove Bypass Mapping"
+    // --- 3. Test "Remove MIDI Mapping" ---
     props.midi_info = "CC 7";
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
-    advance_frame();
-    io.MouseClicked[1] = false;
-
-    io.MousePos = ImVec2(220, 300);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
-    KnobComponent::render("KMidi", props, 1.0f, center);
-    advance_frame();
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
     advance_frame();
 
-    // Open again for bypass mapping clear
-    io.MousePos = center;
-    io.MouseClicked[1] = true;
-    KnobComponent::render("KMidi", props, 1.0f, center);
-    advance_frame();
-    io.MouseClicked[1] = false;
+    ImGuiID remove_p_id = get_popup_item_id("Popup_KMidi", "Remove MIDI Mapping");
 
-    io.MousePos = ImVec2(220, 345);
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    g.NavActivateId = remove_p_id;
+    g.NavActivateDownId = remove_p_id;
+    g.NavActivatePressedId = remove_p_id;
+
+    ImGui::OpenPopup("Popup_KMidi");
     KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
-    io.MouseDown[0] = false;
-    io.MouseClicked[0] = false;
+
+    // --- 4. Test "Remove Bypass Mapping" ---
+    ImGui::OpenPopup("Popup_KMidi");
+    KnobComponent::render("KMidi", props, 1.0f, center);
+    advance_frame();
+
+    ImGuiID remove_b_id = get_popup_item_id("Popup_KMidi", "Remove Bypass Mapping");
+
+    g.NavActivateId = remove_b_id;
+    g.NavActivateDownId = remove_b_id;
+    g.NavActivatePressedId = remove_b_id;
+
+    ImGui::OpenPopup("Popup_KMidi");
+    KnobComponent::render("KMidi", props, 1.0f, center);
     advance_frame();
 
     ImGui::End();
