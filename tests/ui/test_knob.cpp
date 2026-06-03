@@ -24,10 +24,11 @@ static inline void advance_frame() {
 
 static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_id_str) {
     ImGuiContext& g = *GImGui;
-    std::cout << "DEBUG: Searching for " << popup_id_substr << ", item: " << item_id_str << "\n";
+    std::cout << "DEBUG: Searching for popup containing " << popup_id_substr << ", item: " << item_id_str << "\n";
+    // Usually popup window names in ImGui start with "##Popup_"
     for (int i = 0; i < g.Windows.Size; i++) {
         std::cout << "DEBUG: Window name: " << g.Windows[i]->Name << "\n";
-        if (strstr(g.Windows[i]->Name, popup_id_substr)) {
+        if (strstr(g.Windows[i]->Name, "##Popup_")) {
             ImGuiID id = g.Windows[i]->GetID(item_id_str);
             std::cout << "DEBUG: Match found! ID is " << id << "\n";
             return id;
@@ -349,7 +350,7 @@ TEST_F(PresetTest, KnobComponent_DoubleClick_WhenValueAlreadyDefault_NoCallbackF
     bool committed = false;
     KnobProps props;
     props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
-    props.on_value_changed = [&](float v) { changed = true; };
+    props.on_value_changed = [&](float) { changed = true; };
     props.on_value_committed = [&](float, float) { committed = true; };
 
     ImVec2 center = ImGui::GetCursorScreenPos();

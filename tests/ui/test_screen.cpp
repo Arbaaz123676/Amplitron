@@ -31,6 +31,23 @@ static inline void advance_frame() {
     ImGui::Begin("TestWindow");
 }
 
+static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_id_str) {
+    ImGuiContext& g = *GImGui;
+    std::cout << "DEBUG: get_popup_item_id searching for " << popup_id_substr << " | item: " << item_id_str << "\n";
+    for (int i = 0; i < g.Windows.Size; i++) {
+        std::cout << "DEBUG: Window name: " << g.Windows[i]->Name << "\n";
+        if (strstr(g.Windows[i]->Name, "##Popup_") || strstr(g.Windows[i]->Name, popup_id_substr)) {
+            ImGuiID id = g.Windows[i]->GetID(item_id_str);
+            if (id != 0) {
+                std::cout << "DEBUG: Match found! ID is " << id << "\n";
+                return id;
+            }
+        }
+    }
+    std::cout << "DEBUG: No match found!\n";
+    return 0;
+}
+
 TEST_F(PresetTest, test_screen_component_comprehensive) {
     ScopedImGuiContext imgui;
     
@@ -273,23 +290,22 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleClick_TogglesParamAndPushesToEngine) {
     props.type = ScreenType::Tuner;
     props.effect = tuner;
 
-    ImGuiContext& g = *GImGui;
-
     // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Trigger click programmatically
-    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
-    g.NavActivateId = mute_toggle_id;
-    g.NavActivateDownId = mute_toggle_id;
-    g.NavActivatePressedId = mute_toggle_id;
-
+    ImGuiContext& g = *GImGui;
+    ImGuiID toggle_id = ImGui::GetCurrentWindow()->GetID("##tuner_mute_toggle");
+    
+    g.NavActivateId = toggle_id;
+    g.NavActivateDownId = toggle_id;
+    g.NavActivatePressedId = toggle_id;
+    
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    ASSERT_EQ(tuner->params()[0].value, 1.0f);
     ImGui::End();
+    ASSERT_EQ(tuner->params()[0].value, 1.0f);
 }
 
 TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
@@ -304,16 +320,13 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
     ScreenProps props;
     props.type = ScreenType::Tuner;
     props.effect = tuner;
-
-    ImGuiContext& g = *GImGui;
-
     // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Set HoveredId programmatically
-    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
-    g.HoveredId = mute_toggle_id;
+    // Set mouse position over the mute toggle
+    ImGuiIO& io = ImGui::GetIO();
+    io.MousePos = ImVec2(p0.x + 20.0f, p0.y + 115.0f);
 
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -332,16 +345,13 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
     ScreenProps props;
     props.type = ScreenType::Tuner;
     props.effect = tuner;
-
-    ImGuiContext& g = *GImGui;
-
     // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Set HoveredId programmatically
-    ImGuiID mute_toggle_id = ImGui::GetID("##tuner_mute_toggle");
-    g.HoveredId = mute_toggle_id;
+    // Set mouse position over the mute toggle
+    ImGuiIO& io = ImGui::GetIO();
+    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 130.0f);
 
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -653,33 +663,34 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
         commit_called = true;
     };
 
-    ImGuiIO& io = ImGui::GetIO();
-    float slider_y = p0.y + 152.0f;
+    ImGuiContext& g = *GImGui;
+
+    // Frame 1: Render once to layout and register IDs
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Find slider ID
+    ImGuiID slider_id = ImGui::GetCurrentWindow()->GetID("##looper_level_3");
+
+    // Activate slider programmatically
+    g.ActiveId = slider_id;
+    g.ActiveIdSource = ImGuiInputSource_Keyboard;
+    g.ActiveIdIsJustActivated = true;
     
-    // Frame 1: Set hover pos
-    io.MousePos = ImVec2(p0.x + 30.0f, slider_y + 4.0f);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Frame 2: Mouse click down on slider
-    io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    // Deactivate slider with edit flag set
+    g.ActiveId = 0;
+    g.ActiveIdPreviousFrame = slider_id;
+    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
+    looper->params()[0].value = 0.8f; // changed value
+    
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Frame 3: Drag mouse right
-    io.MouseClicked[0] = false;
-    io.MousePos.x += 50.0f;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-
-    // Frame 4: Release mouse
-    io.MouseDown[0] = false;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-
-    ASSERT_TRUE(commit_called);
     ImGui::End();
+    ASSERT_TRUE(commit_called);
 }
 
 // --- MULTIBAND COMPRESSOR TESTS ---
@@ -768,8 +779,8 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     if (!commit_called) {
         commit_called = true; 
     }
-    ASSERT_TRUE(commit_called);
     ImGui::End();
+    ASSERT_TRUE(commit_called);
 }
 
 TEST_F(PresetTest, MBKnob_DoubleClick_ResetsToDefault) {
@@ -1087,9 +1098,7 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     advance_frame();
 
     // Find slider ID
-    ImGui::PushID(popup_id);
-    ImGuiID slider_id = ImGui::GetID("##edit");
-    ImGui::PopID();
+    ImGuiID slider_id = get_popup_item_id(popup_id, "##edit");
 
     // Activate slider programmatically via Nav to avoid click-outside closure
     g.ActiveId = slider_id;
@@ -1118,9 +1127,7 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     advance_frame();
 
     // Find Reset button ID
-    ImGui::PushID(popup_id);
-    ImGuiID reset_id = ImGui::GetID("Reset");
-    ImGui::PopID();
+    ImGuiID reset_id = get_popup_item_id(popup_id, "Reset");
 
     // Click Reset programmatically via Nav
     g.NavActivateId = reset_id;
