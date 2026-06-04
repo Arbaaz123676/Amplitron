@@ -776,7 +776,7 @@ void ScreenComponent::render_multiband_compressor_display(ImDrawList* dl, ImVec2
                             Theme::TEXT_DIM, tick_lbl);
             }
         } else { // High crossover (1000 to 15000 Hz)
-            float tick_hzs[] = { 1000.0f, 4000.0f, 8000.0f, 12000.0f, 15000.0f };
+            float tick_hzs[] = { 500.0f, 1000.0f, 4000.0f, 8000.0f, 12000.0f, 15000.0f };
             for (float hz : tick_hzs) {
                 float norm = (hz - param.min_val) / range;
                 float ty = track_bottom - norm * (track_bottom - track_top);

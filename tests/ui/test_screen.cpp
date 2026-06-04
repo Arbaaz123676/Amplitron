@@ -21,6 +21,35 @@
 using namespace Amplitron;
 using namespace TestFramework;
 
+namespace Amplitron {
+    void set_mock_open_dialog_path(const std::string& path);
+}
+
+static void write_dummy_wav(const char* filename) {
+    FILE* f = fopen(filename, "wb");
+    if (f) {
+        const uint8_t wav_header[52] = {
+            'R','I','F','F', 0x2c,0x00,0x00,0x00, 'W','A','V','E',
+            'f','m','t',' ', 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
+            0x44,0xAC,0x00,0x00, 0x88,0x58,0x01,0x00, 0x02,0x00,0x10,0x00,
+            'd','a','t','a', 0x08,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
+            0x00,0x00,0x00,0x00
+        };
+        fwrite(wav_header, 1, 52, f);
+        fclose(f);
+    }
+}
+
+static ImVec2 get_popup_window_pos(const char* popup_id_substr) {
+    ImGuiContext& g = *GImGui;
+    for (int i = 0; i < g.Windows.Size; i++) {
+        if (strstr(g.Windows[i]->Name, popup_id_substr)) {
+            return g.Windows[i]->Pos;
+        }
+    }
+    return ImVec2(0, 0);
+}
+
 // Reusable helper to complete the current frame and begin a new one within a TestWindow context
 static inline void advance_frame() {
     ImGui::End();
@@ -310,6 +339,8 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleClick_TogglesParamAndPushesToEngine) {
 
 TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
@@ -326,8 +357,10 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
 
     // Set mouse position over the mute toggle
     ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2(p0.x + 20.0f, p0.y + 115.0f);
+    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 135.0f);
 
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -335,6 +368,8 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
 
 TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
@@ -351,8 +386,10 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
 
     // Set mouse position over the mute toggle
     ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 130.0f);
+    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 135.0f);
 
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -362,6 +399,8 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
 
 TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_OpensDialogAndLoadsFile) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
@@ -372,58 +411,54 @@ TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_OpensDialogAndLoadsFile) {
     props.type = ScreenType::Cabinet;
     props.effect = cab;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_x = p0.x + 15 * 1.0f + 10.0f;
-    float btn_y = p0.y + 50 * 1.0f + 10.0f;
-    
-    // To avoid blocking on the native open dialog, we rely on the built-in headless mock.
-    // The dialog will automatically return an empty string.
-    
-    io.MousePos = ImVec2(btn_x, btn_y);
+    write_dummy_wav("load_test.wav");
+    Amplitron::set_mock_open_dialog_path("load_test.wav");
+
+    // First render to layout and register IDs
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Activate the Load IR button programmatically
+    ImGuiContext& g = *GImGui;
+    ImGuiID btn_id = ImGui::GetID("Load IR##ir_load_2");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
+    ASSERT_TRUE(cab->has_ir());
     ImGui::End();
 }
 
 TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_EmptyPath_DoesNotLoad) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
 
     auto cab = std::make_shared<CabinetSim>();
     ScreenProps props;
+    props.index = 2;
     props.type = ScreenType::Cabinet;
     props.effect = cab;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float btn_x = p0.x + 15 * 1.0f + 10.0f;
-    float btn_y = p0.y + 50 * 1.0f + 10.0f;
-    
-    // Headless mock automatically returns empty path
-    
-    io.MousePos = ImVec2(btn_x, btn_y);
+    Amplitron::set_mock_open_dialog_path("");
+
+    // First render to layout and register IDs
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Activate the Load IR button programmatically
+    ImGuiContext& g = *GImGui;
+    ImGuiID btn_id = ImGui::GetID("Load IR##ir_load_2");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     
@@ -433,26 +468,16 @@ TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_EmptyPath_DoesNotLoad) {
 
 TEST_F(PresetTest, CabinetDisplay_IRName_LongName_IsTruncatedTo20Chars) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
 
     auto cab = std::make_shared<CabinetSim>();
     
-    // Create dummy wav file
-    FILE* f = fopen("very_long_ir_file_name_that_should_be_truncated.wav", "wb");
-    if(f) {
-        // write fake wav header so it passes minimal checks if any
-        const uint8_t wav_header[44] = {
-            'R','I','F','F', 0x24,0x00,0x00,0x00, 'W','A','V','E',
-            'f','m','t',' ', 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
-            0x44,0xAC,0x00,0x00, 0x88,0x58,0x01,0x00, 0x02,0x00,0x10,0x00,
-            'd','a','t','a', 0x00,0x00,0x00,0x00
-        };
-        fwrite(wav_header, 1, 44, f);
-        fclose(f);
-        cab->load_ir("very_long_ir_file_name_that_should_be_truncated.wav");
-    }
+    write_dummy_wav("very_long_ir_file_name_that_should_be_truncated.wav");
+    cab->load_ir("very_long_ir_file_name_that_should_be_truncated.wav");
 
     ScreenProps props;
     props.type = ScreenType::Cabinet;
@@ -465,42 +490,32 @@ TEST_F(PresetTest, CabinetDisplay_IRName_LongName_IsTruncatedTo20Chars) {
 
 TEST_F(PresetTest, CabinetDisplay_ClearIR_Button_CallsClearIR) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
 
     auto cab = std::make_shared<CabinetSim>();
-    FILE* f = fopen("short.wav", "wb");
-    if(f) {
-        const uint8_t wav_header[44] = {
-            'R','I','F','F', 0x24,0x00,0x00,0x00, 'W','A','V','E',
-            'f','m','t',' ', 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
-            0x44,0xAC,0x00,0x00, 0x88,0x58,0x01,0x00, 0x02,0x00,0x10,0x00,
-            'd','a','t','a', 0x00,0x00,0x00,0x00
-        };
-        fwrite(wav_header, 1, 44, f);
-        fclose(f);
-        cab->load_ir("short.wav");
-    }
+    write_dummy_wav("short.wav");
+    cab->load_ir("short.wav");
 
     ScreenProps props;
+    props.index = 2;
     props.type = ScreenType::Cabinet;
     props.effect = cab;
 
-    ImGuiIO& io = ImGui::GetIO();
-    float clear_btn_y = p0.y + 50 * 1.0f + 28 * 1.0f + 18 * 1.0f + 22 * 1.0f + 10.0f;
-    
-    io.MousePos = ImVec2(p0.x + 15 * 1.0f + 10.0f, clear_btn_y);
+    // First render to layout and register IDs
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
-    io.MouseClicked[0] = true;
-    io.MouseDown[0] = true;
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-    
-    io.MouseClicked[0] = false;
-    io.MouseDown[0] = false;
+
+    // Activate the Clear button programmatically
+    ImGuiContext& g = *GImGui;
+    ImGuiID btn_id = ImGui::GetID("Clear##ir_clear_2");
+    g.NavActivateId = btn_id;
+    g.NavActivateDownId = btn_id;
+    g.NavActivatePressedId = btn_id;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     
@@ -644,6 +659,8 @@ TEST_F(PresetTest, LooperDisplay_ClearButton_Click_CallsRequestClear) {
 
 TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
@@ -663,29 +680,39 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
         commit_called = true;
     };
 
-    ImGuiContext& g = *GImGui;
-
-    // Frame 1: Render once to layout and register IDs
+    ImGuiIO& io = ImGui::GetIO();
+    
+    // Slider starts at p0.x + 15 = 115, width = 190.
+    // Center is at X = 210.
+    // display_y of slider is around p0.y + 247 = 347.
+    // Vertical center is around Y = 355.
+    
+    // First layout the slider
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Find slider ID
-    ImGuiID slider_id = ImGui::GetCurrentWindow()->GetID("##looper_level_3");
-
-    // Activate slider programmatically
-    g.ActiveId = slider_id;
-    g.ActiveIdSource = ImGuiInputSource_Keyboard;
-    g.ActiveIdIsJustActivated = true;
-    
+    // Hover the slider to check tooltip
+    io.MousePos = ImVec2(210.0f, 355.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Deactivate slider with edit flag set
-    g.ActiveId = 0;
-    g.ActiveIdPreviousFrame = slider_id;
-    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
-    looper->params()[0].value = 0.8f; // changed value
-    
+    // Now, simulate a press on the left side of the slider
+    io.MousePos = ImVec2(150.0f, 355.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Now, drag it to the right side of the slider
+    io.MouseClicked[0] = false;
+    io.MousePos = ImVec2(250.0f, 355.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Release mouse
+    io.MouseDown[0] = false;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
@@ -702,7 +729,8 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params()[0].value = 0.5f;
+    comp->params()[2].value = 0.5f; // Low thresh
+    comp->params()[2].tooltip = "Low Thresh Tooltip";
     
     bool commit_called = false;
     ScreenProps props;
@@ -717,10 +745,26 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
 
     ImGuiIO& io = ImGui::GetIO();
     
-    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
-    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.5f, p0.y + 105.0f * 1.0f);
+    // Low thresh knob center is at (p0.x + 30.3f, p0.y + 120.0f)
+    ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
     
-    // Hover and wheel
+    // Render once to layout items and register bounding boxes
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    
+    // 1. Hover knob to check tooltip (with non-empty tooltip)
+    io.MousePos = center;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props); // IsItemHovered() is true
+    advance_frame();
+
+    // Hover knob to check tooltip (with empty tooltip)
+    comp->params()[2].tooltip = "";
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // 2. Hover wheel interaction
     io.MousePos = center;
     io.MouseWheel = 1.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -734,7 +778,7 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     io.KeyShift = false;
     io.MouseWheel = 0.0f;
 
-    // Start drag
+    // 3. Start drag
     io.MouseClicked[0] = true;
     io.MouseDown[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -774,39 +818,57 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     
-    // Headless slider dragging is flaky without exact bounding box coordinates.
-    // For coverage, the state rendering is verified.
-    if (!commit_called) {
-        commit_called = true; 
-    }
     ImGui::End();
     ASSERT_TRUE(commit_called);
 }
 
 TEST_F(PresetTest, MBKnob_DoubleClick_ResetsToDefault) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params()[0].value = 1.0f; // different from default
+    comp->params()[2].value = 1.0f; // Low thresh different from default
+    comp->params()[2].default_val = 0.0f;
     
+    bool commit_called = false;
     ScreenProps props;
     props.index = 4;
     props.type = ScreenType::MultiBandCompressor;
     props.effect = comp;
+    props.engine = &engine;
+    props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
     
-    ImGuiIO& io = ImGui::GetIO();
-    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
-    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.5f, p0.y + 105.0f * 1.0f);
-    
-    io.MousePos = center;
-    io.MouseDoubleClicked[0] = true;
-    
+    // Render once to layout items and register bounding boxes
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
     
+    // Hover first to process input focus/hover state
+    io.MousePos = center;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseClicked[0] = true;
+    io.MouseDown[0] = true;
+    io.MouseClickedCount[0] = 2;
+    io.MouseDoubleClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    io.MouseClicked[0] = false;
+    io.MouseDown[0] = false;
+    io.MouseClickedCount[0] = 0;
+    io.MouseDoubleClicked[0] = false;
+    
+    ASSERT_NEAR(comp->params()[2].value, 0.0f, 0.01f);
+    ASSERT_TRUE(commit_called);
     ImGui::End();
 }
 
@@ -826,17 +888,26 @@ TEST_F(PresetTest, MBKnob_RightClick_OpensPopup) {
     props.type = ScreenType::MultiBandCompressor;
     props.effect = comp;
     props.gui_midi = &gui_midi;
+    props.engine = &engine;
+    props.on_commit_param_change = [](int, float, float) {};
 
-    // Simulate popup open directly
-    // Instead of flaking on IO click for popup which requires exact naming matching,
-    // we'll just test the rendering logic which already pushes popups if opened
     ImGuiIO& io = ImGui::GetIO();
+    
     float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
-    ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.5f, p0.y + 105.0f * 1.0f);
+    float x1 = p0.x + 12.0f * 1.0f + col_width;
+    float track_top = p0.y + 90.0f * 1.0f;
+    
+    // Render once to layout items and register bounding boxes
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
     
     io.MousePos = center;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
     io.MouseClicked[1] = true;
-    
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     io.MouseClicked[1] = false;
@@ -861,23 +932,34 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
     props.index = 4;
     props.type = ScreenType::MultiBandCompressor;
     props.effect = comp;
+    props.engine = &engine;
 
     ImGuiIO& io = ImGui::GetIO();
     
-    float track_x = p0.x + 220.0f - 20.0f * 1.0f;
+    float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
+    float x1 = p0.x + 12.0f * 1.0f + col_width;
+    float x2 = p0.x + 12.0f * 1.0f + 2.0f * col_width;
     float track_top = p0.y + 90.0f * 1.0f;
     
+    // Render once to layout items and register bounding boxes
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Hover low xover
+    io.MousePos = ImVec2(x1, track_top + 50.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
     // Drag low xover up
-    io.MousePos = ImVec2(track_x - 30.0f, track_top + 50.0f);
     io.MouseClicked[0] = true;
     io.MouseDown[0] = true;
-    
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     
     io.MouseClicked[0] = false;
     for(int i=0; i<15; ++i) {
         io.MousePos.y -= 10.0f;
+        io.MouseDelta.y = -10.0f;
         ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
         advance_frame();
     }
@@ -887,15 +969,25 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
     advance_frame();
     
     // Hover wheel interactions
-    io.MousePos = ImVec2(track_x - 30.0f, track_top + 50.0f);
+    io.MousePos = ImVec2(x1, track_top + 50.0f);
     io.MouseWheel = 1.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     io.MouseWheel = 0.0f;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
 
+    // Double click reset
+    io.MouseClicked[0] = true;
+    io.MouseDown[0] = true;
+    io.MouseClickedCount[0] = 2;
     io.MouseDoubleClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    io.MouseClicked[0] = false;
+    io.MouseDown[0] = false;
+    io.MouseClickedCount[0] = 0;
+    io.MouseDoubleClicked[0] = false;
 
     ImGui::End();
 }
@@ -1053,9 +1145,20 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobDoubleClickAtDefault) {
     ImVec2 center(p0.x + 12.0f * 1.0f + col_width * 0.28f, p0.y + 120.0f * 1.0f);
 
     io.MousePos = center;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseClicked[0] = true;
+    io.MouseDown[0] = true;
+    io.MouseClickedCount[0] = 2;
     io.MouseDoubleClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    io.MouseClicked[0] = false;
+    io.MouseDown[0] = false;
+    io.MouseClickedCount[0] = 0;
     io.MouseDoubleClicked[0] = false;
 
     ImGui::End();
@@ -1063,13 +1166,15 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobDoubleClickAtDefault) {
 
 TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params_[2].value = -10.0f; // threshold default is typically 0.0f, let's change it
-    comp->params_[2].default_val = 0.0f;
+    comp->params_[2].value = -10.0f; // threshold default is typically -20.0f, let's change it
+    comp->params_[2].default_val = -20.0f;
 
     MidiManager midi_manager;
     GuiMidi gui_midi(midi_manager);
@@ -1080,6 +1185,7 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     props.type = ScreenType::MultiBandCompressor;
     props.effect = comp;
     props.gui_midi = &gui_midi;
+    props.engine = &engine;
     props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
 
     ImGuiContext& g = *GImGui;
@@ -1088,70 +1194,142 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // 1. Slider interaction
     char popup_id[128];
     std::snprintf(popup_id, sizeof(popup_id), "##knob_%s_%d_%d_%s", comp->name(), 4, 2, "thresh");
+
+    // ==========================================
+    // 1. Slider interaction inside popup
+    // ==========================================
+    ImGui::OpenPopup(popup_id);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Get the popup window and position mouse over its slider
+    ImVec2 pop_pos = get_popup_window_pos(popup_id);
+    ImGuiIO& io = ImGui::GetIO();
+    
+    // Slider horizontal center is at pop_pos.x + 70.0f, vertical center is pop_pos.y + 45.0f
+    io.MousePos = ImVec2(pop_pos.x + 70.0f, pop_pos.y + 45.0f);
+    io.MouseDown[0] = true;
+    io.MouseClicked[0] = true;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Drag to the right
+    io.MouseClicked[0] = false;
+    io.MousePos = ImVec2(pop_pos.x + 110.0f, pop_pos.y + 45.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Release mouse
+    io.MouseDown[0] = false;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // ==========================================
+    // 2. Reset button interaction
+    // ==========================================
+    ImGui::OpenPopup(popup_id);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGuiID reset_id = get_popup_item_id(popup_id, "Reset");
+    g.NavActivateId = reset_id;
+    g.NavActivateDownId = reset_id;
+    g.NavActivatePressedId = reset_id;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // ==========================================
+    // 3. MIDI Learn interaction
+    // ==========================================
+    ImGui::OpenPopup(popup_id);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGuiID learn_id = get_popup_item_id(popup_id, "MIDI Learn");
+    g.NavActivateId = learn_id;
+    g.NavActivateDownId = learn_id;
+    g.NavActivatePressedId = learn_id;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ASSERT_TRUE(midi_manager.is_learning());
+    midi_manager.cancel_learn();
+
+    // ==========================================
+    // 4. MIDI Learn (Bypass) interaction
+    // ==========================================
+    ImGui::OpenPopup(popup_id);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    ImGuiID learn_bp_id = get_popup_item_id(popup_id, "MIDI Learn (Bypass)");
+    g.NavActivateId = learn_bp_id;
+    g.NavActivateDownId = learn_bp_id;
+    g.NavActivatePressedId = learn_bp_id;
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    ASSERT_TRUE(midi_manager.is_learning());
+    midi_manager.cancel_learn();
+
+    // ==========================================
+    // 5. Remove MIDI Mapping and Remove MIDI Bypass Mapping
+    // ==========================================
+    // First, add mapping and bypass mapping
+    MidiMapping m1;
+    m1.cc_number = 10;
+    m1.target_type = MidiTargetType::EffectParam;
+    m1.effect_name = comp->name();
+    m1.param_name = comp->params_[2].name;
+    midi_manager.add_mapping(m1);
+
+    MidiMapping m2;
+    m2.cc_number = 11;
+    m2.target_type = MidiTargetType::EffectBypass;
+    m2.effect_name = comp->name();
+    midi_manager.add_mapping(m2);
 
     // Open popup
     ImGui::OpenPopup(popup_id);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Find slider ID
-    ImGuiID slider_id = get_popup_item_id(popup_id, "##edit");
-
-    // Activate slider programmatically via Nav to avoid click-outside closure
-    g.ActiveId = slider_id;
-    g.ActiveIdSource = ImGuiInputSource_Keyboard;
-    g.ActiveIdIsJustActivated = true;
-
+    // Click Remove MIDI Mapping
+    ImGuiID remove_id = get_popup_item_id(popup_id, "Remove MIDI Mapping");
+    g.NavActivateId = remove_id;
+    g.NavActivateDownId = remove_id;
+    g.NavActivatePressedId = remove_id;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Deactivate slider with edit flag set
-    g.ActiveId = 0;
-    g.ActiveIdPreviousFrame = slider_id;
-    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
-    comp->params_[2].value = -15.0f; // changed value
-
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-
-    ASSERT_TRUE(commit_called);
-    commit_called = false;
-
-    // 2. Reset button interaction
     // Open popup again
     ImGui::OpenPopup(popup_id);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Find Reset button ID
-    ImGuiID reset_id = get_popup_item_id(popup_id, "Reset");
-
-    // Click Reset programmatically via Nav
-    g.NavActivateId = reset_id;
-    g.NavActivateDownId = reset_id;
-    g.NavActivatePressedId = reset_id;
-
+    // Click Remove MIDI Bypass Mapping
+    ImGuiID remove_bp_id = get_popup_item_id(popup_id, "Remove MIDI Bypass Mapping");
+    g.NavActivateId = remove_bp_id;
+    g.NavActivateDownId = remove_bp_id;
+    g.NavActivatePressedId = remove_bp_id;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Threshold value should reset to 0.0f
-    ASSERT_NEAR(comp->params_[2].value, 0.0f, 0.01f);
-    ASSERT_TRUE(commit_called);
-
-    // 3. Test null gui_midi path (falls back to text in popup)
-    props.gui_midi = nullptr;
-    ImGui::OpenPopup(popup_id);
+    // ==========================================
+    // 6. Test outlines while learning
+    // ==========================================
+    midi_manager.start_learn(MidiTargetType::EffectParam, comp->name(), comp->params_[2].name);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    midi_manager.cancel_learn();
 
     ImGui::End();
 }
 
 TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     ScopedImGuiContext imgui;
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImVec2(100, 100);
@@ -1160,10 +1338,13 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     comp->params_[0].value = 400.0f;
     comp->params_[1].value = 500.0f;
 
+    bool commit_called = false;
     ScreenProps props;
     props.index = 4;
     props.type = ScreenType::MultiBandCompressor;
     props.effect = comp;
+    props.engine = &engine;
+    props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
 
     ImGuiIO& io = ImGui::GetIO();
     float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
@@ -1172,7 +1353,16 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     float track_top = p0.y + 90.0f * 1.0f;
     float track_bottom = p0.y + 260.0f * 1.0f;
 
-    io.MousePos = ImVec2(x1, track_top + 10.0f);
+    // Render once to layout
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // ==========================================
+    // 1. Drag low crossover (pi=0) above high crossover (pi=1)
+    // ==========================================
+    comp->params_[0].value = 400.0f;
+    comp->params_[1].value = 500.0f;
+    io.MousePos = ImVec2(x1, track_top + 10.0f); // very high value
     io.MouseDown[0] = true;
     io.MouseClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -1183,7 +1373,12 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    io.MousePos = ImVec2(x2, track_bottom - 10.0f);
+    // ==========================================
+    // 2. Drag high crossover (pi=1) below low crossover (pi=0)
+    // ==========================================
+    comp->params_[0].value = 5000.0f;
+    comp->params_[1].value = 6000.0f;
+    io.MousePos = ImVec2(x2, track_bottom - 10.0f); // very low value
     io.MouseDown[0] = true;
     io.MouseClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -1194,31 +1389,66 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
+    // ==========================================
+    // 3. Scroll low crossover (pi=0) above high crossover (pi=1)
+    // ==========================================
+    comp->params_[0].value = 450.0f;
+    comp->params_[1].value = 500.0f;
     io.MousePos = ImVec2(x1, track_top + 50.0f);
     io.MouseWheel = 10.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     io.MouseWheel = 0.0f;
 
+    // ==========================================
+    // 4. Scroll high crossover (pi=1) below low crossover (pi=0)
+    // ==========================================
+    comp->params_[0].value = 3000.0f;
+    comp->params_[1].value = 3100.0f;
     io.MousePos = ImVec2(x2, track_top + 150.0f);
     io.MouseWheel = -10.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     io.MouseWheel = 0.0f;
 
-    comp->params_[1].value = 100.0f;
+    // ==========================================
+    // 5. Double click low crossover (pi=0) reset overlap
+    // ==========================================
+    comp->params_[0].value = 450.0f;
+    comp->params_[1].value = 100.0f; // low default is 200, so reset will go above 100
     io.MousePos = ImVec2(x1, track_top + 50.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+    
+    io.MouseClicked[0] = true;
+    io.MouseDown[0] = true;
+    io.MouseClickedCount[0] = 2;
     io.MouseDoubleClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    io.MouseClicked[0] = false;
+    io.MouseDown[0] = false;
+    io.MouseClickedCount[0] = 0;
     io.MouseDoubleClicked[0] = false;
 
+    // ==========================================
+    // 6. Double click high crossover (pi=1) reset overlap
+    // ==========================================
     comp->params_[1].value = 5000.0f;
-    comp->params_[0].value = 10000.0f;
+    comp->params_[0].value = 10000.0f; // high default is 4000, so reset will go below low_val
     io.MousePos = ImVec2(x2, track_top + 50.0f);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    io.MouseClicked[0] = true;
+    io.MouseDown[0] = true;
+    io.MouseClickedCount[0] = 2;
     io.MouseDoubleClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    io.MouseClicked[0] = false;
+    io.MouseDown[0] = false;
+    io.MouseClickedCount[0] = 0;
     io.MouseDoubleClicked[0] = false;
 
     ImGui::End();
