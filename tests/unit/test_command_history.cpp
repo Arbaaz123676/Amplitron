@@ -541,7 +541,7 @@ TEST(ClearAllCommand_ExecutedUndo) {
 
     CommandHistory history;
     auto cmd = std::make_unique<ClearAllCommand>(engine);
-    
+
     // Execute
     history.execute(std::move(cmd));
     ASSERT_EQ(static_cast<int>(engine.effects().size()), 0);
@@ -639,8 +639,10 @@ TEST(CommandHistory_PushExecutedCoalescing) {
 
     CommandHistory history;
     // Push executed commands that should coalesce
-    history.push_executed(std::make_unique<ParameterChangeCommand>(engine, fx, 0, original, original + 0.1f));
-    history.push_executed(std::make_unique<ParameterChangeCommand>(engine, fx, 0, original + 0.1f, original + 0.2f));
+    history.push_executed(
+        std::make_unique<ParameterChangeCommand>(engine, fx, 0, original, original + 0.1f));
+    history.push_executed(
+        std::make_unique<ParameterChangeCommand>(engine, fx, 0, original + 0.1f, original + 0.2f));
 
     ASSERT_EQ(history.undo_size(), 1);
 
@@ -686,4 +688,3 @@ TEST(ParameterChangeCommand_OutOfRangeParam) {
 
     clear_engine(engine);
 }
-

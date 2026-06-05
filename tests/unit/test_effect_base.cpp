@@ -1,15 +1,16 @@
-#include "test_framework.h"
+#include <cmath>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "audio/effects/core/effect.h"
 #include "audio/effects/core/effect_factory.h"
-#include <vector>
-#include <string>
-#include <memory>
-#include <cmath>
+#include "test_framework.h"
 
 using namespace Amplitron;
 
 class MockEffect : public Effect {
-public:
+   public:
     MockEffect() {
         params_.push_back({"Param1", 5.0f, 0.0f, 10.0f, 5.0f, "Hz", "Tooltip1"});
         params_.push_back({"Param2", 0.5f, 0.0f, 1.0f, 0.5f, "%", "Tooltip2"});
@@ -30,7 +31,7 @@ public:
     std::vector<EffectParam>& params() override { return params_; }
     const std::vector<EffectParam>& params() const override { return params_; }
 
-private:
+   private:
     std::vector<EffectParam> params_;
 };
 
@@ -57,11 +58,11 @@ TEST(set_param_by_name_existing) {
     MockEffect fx;
     fx.set_param_by_name("Param1", 8.0f);
     ASSERT_NEAR(fx.get_param_value("Param1"), 8.0f, 0.001f);
-    
+
     // Test clamping
     fx.set_param_by_name("Param1", 15.0f);
     ASSERT_NEAR(fx.get_param_value("Param1"), 10.0f, 0.001f);
-    
+
     fx.set_param_by_name("Param1", -5.0f);
     ASSERT_NEAR(fx.get_param_value("Param1"), 0.0f, 0.001f);
 }

@@ -1,13 +1,13 @@
+#include <imgui_internal.h>
+
 #include <cmath>
 #include <functional>
 #include <memory>
 #include <string>
-#include <imgui_internal.h>
 
 #include "gui/components/knob.h"
 #include "test_fixtures.h"
 #include "test_framework.h"
-
 
 using namespace Amplitron;
 using namespace TestFramework;
@@ -24,7 +24,8 @@ static inline void advance_frame() {
 
 static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_id_str) {
     ImGuiContext& g = *GImGui;
-    std::cout << "DEBUG: Searching for popup containing " << popup_id_substr << ", item: " << item_id_str << "\n";
+    std::cout << "DEBUG: Searching for popup containing " << popup_id_substr
+              << ", item: " << item_id_str << "\n";
     // Usually popup window names in ImGui start with "##Popup_"
     for (int i = 0; i < g.Windows.Size; i++) {
         std::cout << "DEBUG: Window name: " << g.Windows[i]->Name << "\n";
@@ -37,7 +38,6 @@ static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_i
     std::cout << "DEBUG: No match found!\n";
     return 0;
 }
-
 
 TEST_F(PresetTest, test_knob_component_comprehensive) {
     ScopedImGuiContext imgui;
@@ -533,8 +533,15 @@ TEST_F(PresetTest, KnobComponent_RangeZero) {
 
     float val = 50.0f;
     KnobProps props;
-    props.name = "ZeroRange"; props.value = val; props.min_val = 50.0f; props.max_val = 50.0f; props.default_val = 50.0f;
-    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+    props.name = "ZeroRange";
+    props.value = val;
+    props.min_val = 50.0f;
+    props.max_val = 50.0f;
+    props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) {
+        val = v;
+        props.value = v;
+    };
 
     ImVec2 center(200, 200);
     KnobComponent::render("KZero", props, 1.0f, center);
@@ -550,8 +557,15 @@ TEST_F(PresetTest, KnobComponent_AngularDrag_AngleWrapAround) {
 
     float val = 50.0f;
     KnobProps props;
-    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
-    props.on_value_changed = [&](float v) { val = v; props.value = v; };
+    props.name = "Gain";
+    props.value = val;
+    props.min_val = 0.0f;
+    props.max_val = 100.0f;
+    props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) {
+        val = v;
+        props.value = v;
+    };
 
     ImVec2 center(200, 200);
     ImGuiIO& io = ImGui::GetIO();
@@ -602,7 +616,11 @@ TEST_F(PresetTest, KnobComponent_NullCallbacks) {
     ImGui::Begin("TestWindow");
 
     KnobProps props;
-    props.name = "Gain"; props.value = 50.0f; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.name = "Gain";
+    props.value = 50.0f;
+    props.min_val = 0.0f;
+    props.max_val = 100.0f;
+    props.default_val = 50.0f;
 
     ImVec2 center(200, 200);
     ImGuiIO& io = ImGui::GetIO();
@@ -635,8 +653,15 @@ TEST_F(PresetTest, KnobComponent_CtrlModifierDrag) {
 
     float val1 = 50.0f;
     KnobProps props1;
-    props1.name = "Gain"; props1.value = val1; props1.min_val = 0.0f; props1.max_val = 100.0f; props1.default_val = 50.0f;
-    props1.on_value_changed = [&](float v) { val1 = v; props1.value = v; };
+    props1.name = "Gain";
+    props1.value = val1;
+    props1.min_val = 0.0f;
+    props1.max_val = 100.0f;
+    props1.default_val = 50.0f;
+    props1.on_value_changed = [&](float v) {
+        val1 = v;
+        props1.value = v;
+    };
 
     ImVec2 center(200, 200);
     ImGuiIO& io = ImGui::GetIO();
@@ -661,8 +686,15 @@ TEST_F(PresetTest, KnobComponent_CtrlModifierDrag) {
     // Drag with Ctrl
     float val2 = 50.0f;
     KnobProps props2;
-    props2.name = "Gain"; props2.value = val2; props2.min_val = 0.0f; props2.max_val = 100.0f; props2.default_val = 50.0f;
-    props2.on_value_changed = [&](float v) { val2 = v; props2.value = v; };
+    props2.name = "Gain";
+    props2.value = val2;
+    props2.min_val = 0.0f;
+    props2.max_val = 100.0f;
+    props2.default_val = 50.0f;
+    props2.on_value_changed = [&](float v) {
+        val2 = v;
+        props2.value = v;
+    };
 
     io.MousePos = center;
     io.MouseDown[0] = true;
@@ -699,9 +731,19 @@ TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
     float commit_old = 0.0f;
     float commit_new = 0.0f;
     KnobProps props;
-    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
-    props.on_value_changed = [&](float v) { val = v; props.value = v; };
-    props.on_value_committed = [&](float o, float n) { commit_old = o; commit_new = n; };
+    props.name = "Gain";
+    props.value = val;
+    props.min_val = 0.0f;
+    props.max_val = 100.0f;
+    props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) {
+        val = v;
+        props.value = v;
+    };
+    props.on_value_committed = [&](float o, float n) {
+        commit_old = o;
+        commit_new = n;
+    };
 
     ImVec2 center(200, 200);
 
@@ -731,7 +773,7 @@ TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
     g.DeactivatedItemData.ID = slider_id;
     g.DeactivatedItemData.ElapseFrame = g.FrameCount + 1;
     g.DeactivatedItemData.HasBeenEditedBefore = true;
-    props.value = 70.0f; // final value
+    props.value = 70.0f;  // final value
     val = 70.0f;
 
     ImGui::OpenPopup("Popup_KPopSlider");
@@ -754,9 +796,19 @@ TEST_F(PresetTest, KnobComponent_PopupResetButton) {
     float commit_old = 0.0f;
     float commit_new = 0.0f;
     KnobProps props;
-    props.name = "Gain"; props.value = val; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
-    props.on_value_changed = [&](float v) { val = v; props.value = v; };
-    props.on_value_committed = [&](float o, float n) { commit_old = o; commit_new = n; };
+    props.name = "Gain";
+    props.value = val;
+    props.min_val = 0.0f;
+    props.max_val = 100.0f;
+    props.default_val = 50.0f;
+    props.on_value_changed = [&](float v) {
+        val = v;
+        props.value = v;
+    };
+    props.on_value_committed = [&](float o, float n) {
+        commit_old = o;
+        commit_new = n;
+    };
 
     ImVec2 center(200, 200);
 
@@ -799,7 +851,11 @@ TEST_F(PresetTest, KnobComponent_PopupMidiLearnItems) {
     bool clear_b = false;
 
     KnobProps props;
-    props.name = "Gain"; props.value = 50.0f; props.min_val = 0.0f; props.max_val = 100.0f; props.default_val = 50.0f;
+    props.name = "Gain";
+    props.value = 50.0f;
+    props.min_val = 0.0f;
+    props.max_val = 100.0f;
+    props.default_val = 50.0f;
     props.on_midi_learn_param = [&]() { learn_p = true; };
     props.on_midi_clear_param = [&]() { clear_p = true; };
     props.on_midi_learn_bypass = [&]() { learn_b = true; };
@@ -877,5 +933,3 @@ TEST_F(PresetTest, KnobComponent_PopupMidiLearnItems) {
     ASSERT_TRUE(learn_b);
     ASSERT_TRUE(clear_b);
 }
-
-

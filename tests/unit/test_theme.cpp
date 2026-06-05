@@ -120,7 +120,7 @@ TEST(theme_format_parameter_value_db) {
 TEST(theme_format_parameter_value_percent) {
     std::string formatted = Theme::formatParameterValue(75.2f, "%");
     ASSERT_EQ(formatted, "75%");
-    
+
     std::string formatted_pct = Theme::formatParameterValue(50.8f, "pct");
     ASSERT_EQ(formatted_pct, "51%");
 }
@@ -147,11 +147,10 @@ TEST(theme_format_parameter_value_empty_unit) {
 
 TEST(effect_color_lookup_all_effects) {
     const char* all_effects[] = {
-        "Distortion", "Overdrive", "Delay", "Reverb", "Looper",
-        "Chorus", "Phaser", "Flanger", "Equalizer", "Noise Gate",
-        "Compressor", "MultiBand Compressor", "Cabinet", "Octaver",
-        "Pitch Shifter", "Tuner"
-    };
+        "Distortion", "Overdrive",  "Delay",         "Reverb",
+        "Looper",     "Chorus",     "Phaser",        "Flanger",
+        "Equalizer",  "Noise Gate", "Compressor",    "MultiBand Compressor",
+        "Cabinet",    "Octaver",    "Pitch Shifter", "Tuner"};
     for (const char* name : all_effects) {
         const auto* entry = get_effect_color(name);
         ASSERT_TRUE(entry != nullptr);
@@ -163,9 +162,9 @@ TEST(theme_gold_dim_and_not_distinct) {
     ImVec4 gold = Theme::Gold();
     ImVec4 gold_dim = Theme::GoldDim();
     ASSERT_NEAR(gold_dim.w, 1.0f, 1e-6f);
-    bool is_same = (std::fabs(gold.x - gold_dim.x) < 1e-4f &&
-                    std::fabs(gold.y - gold_dim.y) < 1e-4f &&
-                    std::fabs(gold.z - gold_dim.z) < 1e-4f);
+    bool is_same =
+        (std::fabs(gold.x - gold_dim.x) < 1e-4f && std::fabs(gold.y - gold_dim.y) < 1e-4f &&
+         std::fabs(gold.z - gold_dim.z) < 1e-4f);
     ASSERT_FALSE(is_same);
     ASSERT_GT(gold_dim.x, 0.4f);
     ASSERT_GT(gold_dim.y, 0.3f);

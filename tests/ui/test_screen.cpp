@@ -1,40 +1,38 @@
-#include "test_framework.h"
-#include "test_fixtures.h"
-#include <string>
-#include <memory>
+#include <imgui_internal.h>
+
 #include <cmath>
 #include <functional>
-#include <imgui_internal.h>
+#include <memory>
+#include <string>
 
 #include "gui/components/screen.h"
 #include "gui/views/gui_midi.h"
 #include "midi/midi_manager.h"
-
+#include "test_fixtures.h"
+#include "test_framework.h"
 
 #define private public
-#include "audio/effects/utility/tuner.h"
 #include "audio/effects/amp_cab/cabinet_sim.h"
-#include "audio/effects/utility/looper.h"
 #include "audio/effects/dynamics/multiband_compressor.h"
+#include "audio/effects/utility/looper.h"
+#include "audio/effects/utility/tuner.h"
 #undef private
 
 using namespace Amplitron;
 using namespace TestFramework;
 
 namespace Amplitron {
-    void set_mock_open_dialog_path(const std::string& path);
+void set_mock_open_dialog_path(const std::string& path);
 }
 
 static void write_dummy_wav(const char* filename) {
     FILE* f = fopen(filename, "wb");
     if (f) {
         const uint8_t wav_header[52] = {
-            'R','I','F','F', 0x2c,0x00,0x00,0x00, 'W','A','V','E',
-            'f','m','t',' ', 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
-            0x44,0xAC,0x00,0x00, 0x88,0x58,0x01,0x00, 0x02,0x00,0x10,0x00,
-            'd','a','t','a', 0x08,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00
-        };
+            'R',  'I',  'F',  'F',  0x2c, 0x00, 0x00, 0x00, 'W',  'A',  'V',  'E',  'f',
+            'm',  't',  ' ',  0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xAC,
+            0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x02, 0x00, 0x10, 0x00, 'd',  'a',  't',
+            'a',  0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
         fwrite(wav_header, 1, 52, f);
         fclose(f);
     }
@@ -43,7 +41,7 @@ static void write_dummy_wav(const char* filename) {
 static ImVec2 get_popup_window_pos(const char* popup_id_substr) {
     ImGuiContext& g = *GImGui;
     for (int i = 0; i < g.Windows.Size; i++) {
-        if (strstr(g.Windows[i]->Name, popup_id_substr)) {
+        if (strstr(g.Windows[i]->Name, "##Popup_") || strstr(g.Windows[i]->Name, popup_id_substr)) {
             return g.Windows[i]->Pos;
         }
     }
@@ -62,7 +60,8 @@ static inline void advance_frame() {
 
 static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_id_str) {
     ImGuiContext& g = *GImGui;
-    std::cout << "DEBUG: get_popup_item_id searching for " << popup_id_substr << " | item: " << item_id_str << "\n";
+    std::cout << "DEBUG: get_popup_item_id searching for " << popup_id_substr
+              << " | item: " << item_id_str << "\n";
     for (int i = 0; i < g.Windows.Size; i++) {
         std::cout << "DEBUG: Window name: " << g.Windows[i]->Name << "\n";
         if (strstr(g.Windows[i]->Name, "##Popup_") || strstr(g.Windows[i]->Name, popup_id_substr)) {
@@ -79,7 +78,7 @@ static ImGuiID get_popup_item_id(const char* popup_id_substr, const char* item_i
 
 TEST_F(PresetTest, test_screen_component_comprehensive) {
     ScopedImGuiContext imgui;
-    
+
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(1024, 768));
     ImGui::Begin("TestWindow");
@@ -102,17 +101,17 @@ TEST_F(PresetTest, test_screen_component_comprehensive) {
     auto tuner = std::make_shared<TunerPedal>();
     props.type = ScreenType::Tuner;
     props.effect = tuner;
-    
+
     // Disabled tuner
     tuner->set_enabled(false);
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
-    
+
     // Active tuner, no signal
     tuner->set_enabled(true);
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
-    
+
     // Active tuner, with signal
     tuner->detected_note.store(9);
     tuner->detected_octave.store(2);
@@ -136,11 +135,11 @@ TEST_F(PresetTest, test_screen_component_comprehensive) {
     auto cab = std::make_shared<CabinetSim>();
     props.type = ScreenType::Cabinet;
     props.effect = cab;
-    
+
     // Parametric mode (no IR)
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
-    
+
     // Simulate mic placement dragging
     io.MousePos = ImVec2(p0.x + width * 0.5f, p0.y + 40.0f);
     io.MouseDown[0] = true;
@@ -195,7 +194,7 @@ TEST_F(PresetTest, test_screen_component_comprehensive) {
     // State: Recording
     looper->ui_state_.store(static_cast<uint32_t>(Looper::State::Recording));
     looper->ui_has_loop_.store(0);
-    looper->ui_playhead_samples_.store(48000); // 1 second recorded
+    looper->ui_playhead_samples_.store(48000);  // 1 second recorded
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
 
@@ -228,7 +227,7 @@ TEST_F(PresetTest, test_screen_component_comprehensive) {
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
     io.MouseClicked[0] = false;
-    
+
     // Drag to prevent overlap (low beyond high)
     mb->params()[0].value = 800.0f;
     mb->params()[1].value = 1000.0f;
@@ -295,7 +294,7 @@ TEST_F(PresetTest, test_screen_component_comprehensive) {
     ScreenComponent::render(dl, p0, width, zoom, props);
     advance_frame();
     io.MouseClicked[1] = false;
-    
+
     // Call render again when popup is open so that the popup content is rendered
     ScreenComponent::render(dl, p0, width, zoom, props);
 
@@ -311,7 +310,7 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleClick_TogglesParamAndPushesToEngine) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto tuner = std::make_shared<TunerPedal>();
-    tuner->params()[0].value = 0.0f; // Initial state: not muted
+    tuner->params()[0].value = 0.0f;  // Initial state: not muted
 
     ScreenProps props;
     props.index = 1;
@@ -325,11 +324,11 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleClick_TogglesParamAndPushesToEngine) {
 
     ImGuiContext& g = *GImGui;
     ImGuiID toggle_id = ImGui::GetCurrentWindow()->GetID("##tuner_mute_toggle");
-    
+
     g.NavActivateId = toggle_id;
     g.NavActivateDownId = toggle_id;
     g.NavActivatePressedId = toggle_id;
-    
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
@@ -353,14 +352,11 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_WithTooltip_ShowsTooltip) {
     props.effect = tuner;
     // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
 
-    // Set mouse position over the mute toggle
-    ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 135.0f);
+    // Programmatically hover the button
+    ImGuiContext& g = *GImGui;
+    g.HoveredId = ImGui::GetID("##tuner_mute_toggle");
 
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -375,21 +371,18 @@ TEST_F(PresetTest, TunerDisplay_MuteToggleHover_NoTooltip_ShowsGenericTooltip) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto tuner = std::make_shared<TunerPedal>();
-    tuner->params()[0].tooltip = ""; // Empty
+    tuner->params()[0].tooltip = "";  // Empty
 
     ScreenProps props;
     props.type = ScreenType::Tuner;
     props.effect = tuner;
     // Render once to layout items
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
 
-    // Set mouse position over the mute toggle
-    ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2(p0.x + 110.0f, p0.y + 135.0f);
+    // Programmatically hover the button
+    ImGuiContext& g = *GImGui;
+    g.HoveredId = ImGui::GetID("##tuner_mute_toggle");
 
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ImGui::End();
@@ -427,7 +420,7 @@ TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_OpensDialogAndLoadsFile) {
 
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     ASSERT_TRUE(cab->has_ir());
     ImGui::End();
 }
@@ -461,7 +454,7 @@ TEST_F(PresetTest, CabinetDisplay_LoadIR_Button_EmptyPath_DoesNotLoad) {
 
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     ASSERT_FALSE(cab->has_ir());
     ImGui::End();
 }
@@ -475,7 +468,7 @@ TEST_F(PresetTest, CabinetDisplay_IRName_LongName_IsTruncatedTo20Chars) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto cab = std::make_shared<CabinetSim>();
-    
+
     write_dummy_wav("very_long_ir_file_name_that_should_be_truncated.wav");
     cab->load_ir("very_long_ir_file_name_that_should_be_truncated.wav");
 
@@ -518,7 +511,7 @@ TEST_F(PresetTest, CabinetDisplay_ClearIR_Button_CallsClearIR) {
 
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     ASSERT_FALSE(cab->has_ir());
     ImGui::End();
 }
@@ -668,7 +661,7 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
     auto looper = std::make_shared<Looper>();
     looper->params()[0].value = 0.5f;
     looper->params()[0].tooltip = "Slider Tooltip";
-    
+
     bool commit_called = false;
     ScreenProps props;
     props.index = 3;
@@ -676,49 +669,43 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
     props.effect = looper;
     props.engine = &engine;
     props.on_commit_param_change = [&](int idx, float old_val, float new_val) {
-        (void)idx; (void)old_val; (void)new_val;
+        (void)idx;
+        (void)old_val;
+        (void)new_val;
         commit_called = true;
     };
 
     ImGuiIO& io = ImGui::GetIO();
-    
-    // Slider starts at p0.x + 15 = 115, width = 190.
-    // Center is at X = 210.
-    // display_y of slider is around p0.y + 247 = 347.
-    // Vertical center is around Y = 355.
-    
+    ImGuiContext& g = *GImGui;
+
     // First layout the slider
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     // Hover the slider to check tooltip
-    io.MousePos = ImVec2(210.0f, 355.0f);
+    ImGuiID slider_id = ImGui::GetID("##looper_level_3");
+    g.HoveredId = slider_id;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Now, simulate a press on the left side of the slider
-    io.MousePos = ImVec2(150.0f, 355.0f);
+    // Now, simulate a press on the slider (programmatically activate it)
     io.MouseDown[0] = true;
-    io.MouseClicked[0] = true;
+    g.ActiveId = slider_id;
+    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdIsJustActivated = true;
+    g.ActiveIdHasBeenEditedBefore = true;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
-    // Now, drag it to the right side of the slider
-    io.MouseClicked[0] = false;
-    io.MousePos = ImVec2(250.0f, 355.0f);
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
-    advance_frame();
-
-    // Release mouse
+    // Release mouse and change value
     io.MouseDown[0] = false;
+    looper->params()[0].value = 0.8f;
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-
-    if (!commit_called) {
-        commit_called = true;
-    }
 
     ImGui::End();
     ASSERT_TRUE(commit_called);
@@ -733,9 +720,9 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params()[2].value = 0.5f; // Low thresh
+    comp->params()[2].value = 0.5f;  // Low thresh
     comp->params()[2].tooltip = "Low Thresh Tooltip";
-    
+
     bool commit_called = false;
     ScreenProps props;
     props.index = 4;
@@ -743,24 +730,26 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     props.effect = comp;
     props.engine = &engine;
     props.on_commit_param_change = [&](int idx, float old_val, float new_val) {
-        (void)idx; (void)old_val; (void)new_val;
+        (void)idx;
+        (void)old_val;
+        (void)new_val;
         commit_called = true;
     };
 
     ImGuiIO& io = ImGui::GetIO();
-    
+
     // Low thresh knob center is at (p0.x + 30.3f, p0.y + 120.0f)
     ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
-    
+
     // Render once to layout items and register bounding boxes
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     // 1. Hover knob to check tooltip (with non-empty tooltip)
     io.MousePos = center;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props); // IsItemHovered() is true
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);  // IsItemHovered() is true
     advance_frame();
 
     // Hover knob to check tooltip (with empty tooltip)
@@ -773,7 +762,7 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     io.MouseWheel = 1.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     // Shift hover wheel
     io.KeyShift = true;
     io.MouseWheel = -1.0f;
@@ -787,29 +776,29 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     io.MouseDown[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     // Drag down by 50px
     io.MouseClicked[0] = false;
-    for(int i=0; i<5; ++i) {
+    for (int i = 0; i < 5; ++i) {
         io.MousePos.y += 10.0f;
         io.MouseDelta.y = 10.0f;
         ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
         advance_frame();
     }
-    
+
     // Drag down with Shift
     io.KeyShift = true;
-    for(int i=0; i<5; ++i) {
+    for (int i = 0; i < 5; ++i) {
         io.MousePos.y += 10.0f;
         io.MouseDelta.y = 10.0f;
         ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
         advance_frame();
     }
     io.KeyShift = false;
-    
+
     // Drag down with Ctrl
     io.KeyCtrl = true;
-    for(int i=0; i<5; ++i) {
+    for (int i = 0; i < 5; ++i) {
         io.MousePos.y += 10.0f;
         io.MouseDelta.y = 10.0f;
         ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -821,7 +810,7 @@ TEST_F(PresetTest, MBKnob_VerticalDrag_UpdatesValueAndPushesToEngine) {
     io.MouseDown[0] = false;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     ImGui::End();
     ASSERT_TRUE(commit_called);
 }
@@ -835,9 +824,9 @@ TEST_F(PresetTest, MBKnob_DoubleClick_ResetsToDefault) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params()[2].value = 1.0f; // Low thresh different from default
+    comp->params()[2].value = 1.0f;  // Low thresh different from default
     comp->params()[2].default_val = 0.0f;
-    
+
     bool commit_called = false;
     ScreenProps props;
     props.index = 4;
@@ -845,14 +834,14 @@ TEST_F(PresetTest, MBKnob_DoubleClick_ResetsToDefault) {
     props.effect = comp;
     props.engine = &engine;
     props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
-    
+
     // Render once to layout items and register bounding boxes
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
-    
+
     // Hover first to process input focus/hover state
     io.MousePos = center;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -870,7 +859,7 @@ TEST_F(PresetTest, MBKnob_DoubleClick_ResetsToDefault) {
     io.MouseDown[0] = false;
     io.MouseClickedCount[0] = 0;
     io.MouseDoubleClicked[0] = false;
-    
+
     ASSERT_NEAR(comp->params()[2].value, 0.0f, 0.01f);
     ASSERT_TRUE(commit_called);
     ImGui::End();
@@ -883,10 +872,10 @@ TEST_F(PresetTest, MBKnob_RightClick_OpensPopup) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    
+
     MidiManager midi_manager;
     GuiMidi gui_midi(midi_manager);
-    
+
     ScreenProps props;
     props.index = 4;
     props.type = ScreenType::MultiBandCompressor;
@@ -896,17 +885,17 @@ TEST_F(PresetTest, MBKnob_RightClick_OpensPopup) {
     props.on_commit_param_change = [](int, float, float) {};
 
     ImGuiIO& io = ImGui::GetIO();
-    
+
     float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
     float x1 = p0.x + 12.0f * 1.0f + col_width;
     float track_top = p0.y + 90.0f * 1.0f;
-    
+
     // Render once to layout items and register bounding boxes
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     ImVec2 center(p0.x + 30.3f, p0.y + 120.0f);
-    
+
     io.MousePos = center;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -915,10 +904,10 @@ TEST_F(PresetTest, MBKnob_RightClick_OpensPopup) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
     io.MouseClicked[1] = false;
-    
+
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     ImGui::End();
 }
 
@@ -929,9 +918,9 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params()[0].value = 200.0f; // low xover
-    comp->params()[1].value = 4000.0f; // high xover
-    
+    comp->params()[0].value = 200.0f;   // low xover
+    comp->params()[1].value = 4000.0f;  // high xover
+
     ScreenProps props;
     props.index = 4;
     props.type = ScreenType::MultiBandCompressor;
@@ -939,12 +928,12 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
     props.engine = &engine;
 
     ImGuiIO& io = ImGui::GetIO();
-    
+
     float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
     float x1 = p0.x + 12.0f * 1.0f + col_width;
     float x2 = p0.x + 12.0f * 1.0f + 2.0f * col_width;
     float track_top = p0.y + 90.0f * 1.0f;
-    
+
     // Render once to layout items and register bounding boxes
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -959,19 +948,19 @@ TEST_F(PresetTest, XoverSlider_Drag_UpdatesValueAndPreventsOverlap) {
     io.MouseDown[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     io.MouseClicked[0] = false;
-    for(int i=0; i<15; ++i) {
+    for (int i = 0; i < 15; ++i) {
         io.MousePos.y -= 10.0f;
         io.MouseDelta.y = -10.0f;
         ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
         advance_frame();
     }
-    
+
     io.MouseDown[0] = false;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     // Hover wheel interactions
     io.MousePos = ImVec2(x1, track_top + 50.0f);
     io.MouseWheel = 1.0f;
@@ -1019,7 +1008,7 @@ TEST_F(PresetTest, TunerDisplay_SignalDetected_Tuning) {
 
     auto tuner = std::make_shared<TunerPedal>();
     tuner->signal_detected.store(true);
-    tuner->detected_note.store(4); // E
+    tuner->detected_note.store(4);  // E
     tuner->detected_octave.store(2);
     tuner->detected_freq.store(82.4f);
 
@@ -1177,7 +1166,7 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     ImVec2 p0 = ImVec2(100, 100);
 
     auto comp = std::make_shared<MultiBandCompressor>();
-    comp->params_[2].value = -10.0f; // threshold default is typically -20.0f, let's change it
+    comp->params_[2].value = -10.0f;  // threshold default is typically -20.0f, let's change it
     comp->params_[2].default_val = -20.0f;
 
     MidiManager midi_manager;
@@ -1194,7 +1183,10 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
 
     ImGuiContext& g = *GImGui;
 
-    // Render normally first to register knob state
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Render normally first to register knob state and hover it
+    io.MousePos = ImVec2(p0.x + 30.3f, p0.y + 120.0f);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
@@ -1204,14 +1196,14 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     // ==========================================
     // 1. Slider interaction inside popup
     // ==========================================
-    ImGui::OpenPopup(popup_id);
+    io.MouseClicked[1] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
+    io.MouseClicked[1] = false;
 
     // Get the popup window and position mouse over its slider
     ImVec2 pop_pos = get_popup_window_pos(popup_id);
-    ImGuiIO& io = ImGui::GetIO();
-    
+
     // Slider horizontal center is at pop_pos.x + 70.0f, vertical center is pop_pos.y + 45.0f
     io.MousePos = ImVec2(pop_pos.x + 70.0f, pop_pos.y + 45.0f);
     io.MouseDown[0] = true;
@@ -1327,6 +1319,14 @@ TEST_F(PresetTest, MultiBandCompressor_MBKnobPopupAndInteractions) {
     advance_frame();
     midi_manager.cancel_learn();
 
+    // ==========================================
+    // 7. Test popup with null gui_midi
+    // ==========================================
+    props.gui_midi = nullptr;
+    ImGui::OpenPopup(popup_id);
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
     ImGui::End();
 }
 
@@ -1351,6 +1351,7 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     props.on_commit_param_change = [&](int, float, float) { commit_called = true; };
 
     ImGuiIO& io = ImGui::GetIO();
+    ImGuiContext& g = *GImGui;
     float col_width = (220.0f - 24.0f * 1.0f) / 3.0f;
     float x1 = p0.x + 12.0f * 1.0f + col_width;
     float x2 = p0.x + 12.0f * 1.0f + 2.0f * col_width;
@@ -1366,7 +1367,10 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // ==========================================
     comp->params_[0].value = 400.0f;
     comp->params_[1].value = 500.0f;
-    io.MousePos = ImVec2(x1, track_top + 10.0f); // very high value
+    g.ActiveId = ImGui::GetID("##slider_MultiBand Compressor_4_0_low_xover");
+    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdIsJustActivated = true;
+    io.MousePos = ImVec2(x1, track_top + 10.0f);  // very high value
     io.MouseDown[0] = true;
     io.MouseClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -1382,7 +1386,10 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // ==========================================
     comp->params_[0].value = 5000.0f;
     comp->params_[1].value = 6000.0f;
-    io.MousePos = ImVec2(x2, track_bottom - 10.0f); // very low value
+    g.ActiveId = ImGui::GetID("##slider_MultiBand Compressor_4_1_high_xover");
+    g.ActiveIdSource = ImGuiInputSource_Mouse;
+    g.ActiveIdIsJustActivated = true;
+    io.MousePos = ImVec2(x2, track_bottom - 10.0f);  // very low value
     io.MouseDown[0] = true;
     io.MouseClicked[0] = true;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
@@ -1398,7 +1405,7 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // ==========================================
     comp->params_[0].value = 450.0f;
     comp->params_[1].value = 500.0f;
-    io.MousePos = ImVec2(x1, track_top + 50.0f);
+    g.HoveredId = ImGui::GetID("##slider_MultiBand Compressor_4_0_low_xover");
     io.MouseWheel = 10.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -1409,7 +1416,7 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // ==========================================
     comp->params_[0].value = 3000.0f;
     comp->params_[1].value = 3100.0f;
-    io.MousePos = ImVec2(x2, track_top + 150.0f);
+    g.HoveredId = ImGui::GetID("##slider_MultiBand Compressor_4_1_high_xover");
     io.MouseWheel = -10.0f;
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -1419,11 +1426,11 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // 5. Double click low crossover (pi=0) reset overlap
     // ==========================================
     comp->params_[0].value = 450.0f;
-    comp->params_[1].value = 100.0f; // low default is 200, so reset will go above 100
+    comp->params_[1].value = 100.0f;  // low default is 200, so reset will go above 100
     io.MousePos = ImVec2(x1, track_top + 50.0f);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
-    
+
     io.MouseClicked[0] = true;
     io.MouseDown[0] = true;
     io.MouseClickedCount[0] = 2;
@@ -1439,7 +1446,7 @@ TEST_F(PresetTest, MultiBandCompressor_XoverOverlapPrevention) {
     // 6. Double click high crossover (pi=1) reset overlap
     // ==========================================
     comp->params_[1].value = 5000.0f;
-    comp->params_[0].value = 10000.0f; // high default is 4000, so reset will go below low_val
+    comp->params_[0].value = 10000.0f;  // high default is 4000, so reset will go below low_val
     io.MousePos = ImVec2(x2, track_top + 50.0f);
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -1516,7 +1523,7 @@ TEST_F(PresetTest, LooperDisplay_IdleState_And_DeactivateEdit) {
     g.ActiveIdSource = ImGuiInputSource_Mouse;
     g.ActiveIdIsJustActivated = true;
     g.ActiveIdHasBeenEditedBefore = true;
-    
+
     // Render to trigger IsItemActivated() inside screen.cpp
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
@@ -1524,13 +1531,16 @@ TEST_F(PresetTest, LooperDisplay_IdleState_And_DeactivateEdit) {
     // Frame 3: Deactivate the slider with edit flag set
     io.MouseDown[0] = false;
     float current_val = looper->params()[0].value;
-    looper->params()[0].value = current_val + 0.1f; // changed value
-    
+    looper->params()[0].value = current_val + 0.1f;  // changed value
+
+    ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
+    advance_frame();
+
+    // Frame 4: Hover overdub button to test tooltip
+    g.HoveredId = ImGui::GetID("Overdub##looper_dub_3");
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
     ImGui::End();
-
     ASSERT_TRUE(commit_called);
 }
-
