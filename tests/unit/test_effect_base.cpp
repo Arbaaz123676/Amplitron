@@ -1,6 +1,6 @@
 #include "test_framework.h"
-#include "audio/effects/effect.h"
-#include "audio/effects/effect_factory.h"
+#include "audio/effects/core/effect.h"
+#include "audio/effects/core/effect_factory.h"
 #include <vector>
 #include <string>
 #include <memory>
@@ -28,6 +28,7 @@ public:
     const char* type_id() const override { return "MockEffect"; }
 
     std::vector<EffectParam>& params() override { return params_; }
+    const std::vector<EffectParam>& params() const override { return params_; }
 
 private:
     std::vector<EffectParam> params_;

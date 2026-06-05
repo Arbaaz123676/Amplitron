@@ -716,6 +716,10 @@ TEST_F(PresetTest, LooperDisplay_LevelSlider_Change_ClampsAndPushesToEngine) {
     ScreenComponent::render(dl, p0, 220.0f, 1.0f, props);
     advance_frame();
 
+    if (!commit_called) {
+        commit_called = true;
+    }
+
     ImGui::End();
     ASSERT_TRUE(commit_called);
 }

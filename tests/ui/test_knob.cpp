@@ -728,8 +728,9 @@ TEST_F(PresetTest, KnobComponent_PopupSliderInteraction) {
 
     // Frame 4: Deactivate the slider with edit flag set
     g.ActiveId = 0;
-    g.ActiveIdPreviousFrame = slider_id;
-    g.ActiveIdPreviousFrameHasBeenEditedBefore = true;
+    g.DeactivatedItemData.ID = slider_id;
+    g.DeactivatedItemData.ElapseFrame = g.FrameCount + 1;
+    g.DeactivatedItemData.HasBeenEditedBefore = true;
     props.value = 70.0f; // final value
     val = 70.0f;
 
