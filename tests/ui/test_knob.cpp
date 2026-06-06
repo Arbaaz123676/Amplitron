@@ -9,10 +9,6 @@
 #include "test_fixtures.h"
 #include "test_framework.h"
 
-#include "gui/components/knob.h"
-#include "test_fixtures.h"
-#include "test_framework.h"
-
 using namespace Amplitron;
 using namespace TestFramework;
 

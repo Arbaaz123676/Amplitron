@@ -11,7 +11,6 @@
 #include "test_fixtures.h"
 #include "test_framework.h"
 
-
 #define private public
 #include "audio/effects/amp_cab/cabinet_sim.h"
 #include "audio/effects/dynamics/multiband_compressor.h"
