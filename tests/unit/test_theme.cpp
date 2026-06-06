@@ -1,6 +1,7 @@
-#include "test_framework.h"
-#include "gui/theme/theme.h"
 #include <cstring>
+
+#include "gui/theme/theme.h"
+#include "test_framework.h"
 
 using namespace Amplitron;
 
@@ -13,15 +14,13 @@ TEST(theme_app_name_not_empty) {
     ASSERT_TRUE(std::strlen(Theme::WINDOW_TITLE) > 0);
 }
 
-TEST(theme_app_name_is_amplitron) {
-    ASSERT_TRUE(std::strcmp(Theme::APP_NAME, "Amplitron") == 0);
-}
+TEST(theme_app_name_is_amplitron) { ASSERT_TRUE(std::strcmp(Theme::APP_NAME, "Amplitron") == 0); }
 
 TEST(theme_gold_color_valid) {
     ImVec4 gold = Theme::Gold();
-    ASSERT_GT(gold.x, 0.5f);   // R > 0.5
-    ASSERT_GT(gold.y, 0.3f);   // G > 0.3
-    ASSERT_LT(gold.z, 0.5f);   // B < 0.5 (gold is warm)
+    ASSERT_GT(gold.x, 0.5f);  // R > 0.5
+    ASSERT_GT(gold.y, 0.3f);  // G > 0.3
+    ASSERT_LT(gold.z, 0.5f);  // B < 0.5 (gold is warm)
     ASSERT_NEAR(gold.w, 1.0f, 1e-6f);
 }
 
@@ -67,10 +66,8 @@ TEST(theme_layout_constants_positive) {
 // ============================================================
 
 TEST(effect_color_lookup_known_effects) {
-    const char* known[] = {
-        "Distortion", "Overdrive", "Delay", "Reverb",
-        "Chorus", "Equalizer", "Noise Gate", "Compressor", "Cabinet"
-    };
+    const char* known[] = {"Distortion", "Overdrive",  "Delay",      "Reverb", "Chorus",
+                           "Equalizer",  "Noise Gate", "Compressor", "Cabinet"};
 
     for (const char* name : known) {
         const auto* entry = get_effect_color(name);
@@ -123,7 +120,7 @@ TEST(theme_format_parameter_value_db) {
 TEST(theme_format_parameter_value_percent) {
     std::string formatted = Theme::formatParameterValue(75.2f, "%");
     ASSERT_EQ(formatted, "75%");
-    
+
     std::string formatted_pct = Theme::formatParameterValue(50.8f, "pct");
     ASSERT_EQ(formatted_pct, "51%");
 }
@@ -150,11 +147,10 @@ TEST(theme_format_parameter_value_empty_unit) {
 
 TEST(effect_color_lookup_all_effects) {
     const char* all_effects[] = {
-        "Distortion", "Overdrive", "Delay", "Reverb", "Looper",
-        "Chorus", "Phaser", "Flanger", "Equalizer", "Noise Gate",
-        "Compressor", "MultiBand Compressor", "Cabinet", "Octaver",
-        "Pitch Shifter", "Tuner"
-    };
+        "Distortion", "Overdrive",  "Delay",         "Reverb",
+        "Looper",     "Chorus",     "Phaser",        "Flanger",
+        "Equalizer",  "Noise Gate", "Compressor",    "MultiBand Compressor",
+        "Cabinet",    "Octaver",    "Pitch Shifter", "Tuner"};
     for (const char* name : all_effects) {
         const auto* entry = get_effect_color(name);
         ASSERT_TRUE(entry != nullptr);
@@ -166,9 +162,9 @@ TEST(theme_gold_dim_and_not_distinct) {
     ImVec4 gold = Theme::Gold();
     ImVec4 gold_dim = Theme::GoldDim();
     ASSERT_NEAR(gold_dim.w, 1.0f, 1e-6f);
-    bool is_same = (std::fabs(gold.x - gold_dim.x) < 1e-4f &&
-                    std::fabs(gold.y - gold_dim.y) < 1e-4f &&
-                    std::fabs(gold.z - gold_dim.z) < 1e-4f);
+    bool is_same =
+        (std::fabs(gold.x - gold_dim.x) < 1e-4f && std::fabs(gold.y - gold_dim.y) < 1e-4f &&
+         std::fabs(gold.z - gold_dim.z) < 1e-4f);
     ASSERT_FALSE(is_same);
     ASSERT_GT(gold_dim.x, 0.4f);
     ASSERT_GT(gold_dim.y, 0.3f);
