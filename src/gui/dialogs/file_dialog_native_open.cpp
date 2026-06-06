@@ -3,10 +3,12 @@
 // Open dialog implementation
 // =============================================================================
 
-#include "gui/dialogs/file_dialog.h"
 #include <cstring>
 
+#include "gui/dialogs/file_dialog.h"
+
 #ifdef _WIN32
+// clang-format off
 #define WIN32_LEAN_AND_MEAN
 #include <commdlg.h>
 #include <windows.h>
@@ -208,6 +210,6 @@ std::string show_open_dialog(const std::string &title,
 }
 #endif
 
-#endif // AMPLITRON_HEADLESS
+#endif  // AMPLITRON_HEADLESS
 
-} // namespace Amplitron
+}  // namespace Amplitron

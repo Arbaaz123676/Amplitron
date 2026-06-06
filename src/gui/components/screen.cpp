@@ -1055,4 +1055,4 @@ void ScreenComponent::render_multiband_compressor_display(
                  17, 13.0f, "outgain");
 }
 
-} // namespace Amplitron
+}  // namespace Amplitron
