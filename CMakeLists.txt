@@ -289,6 +289,7 @@ set(APP_SOURCES
     src/gui/views/gui_presets.cpp
     src/gui/views/gui_recording.cpp
     src/gui/views/gui_tuner.cpp
+    src/gui/views/gui_keyboard_shortcuts.cpp
     src/gui/views/gui_analyzer.cpp
     src/gui/pedalboard/pedal_board.cpp
     src/gui/pedalboard/pedal_board_menu.cpp
@@ -788,6 +789,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         tests/ui/test_gui_midi.cpp
         tests/ui/test_gui_recording.cpp
         tests/ui/test_gui_tuner.cpp
+        tests/ui/test_gui_keyboard_shortcuts.cpp
         tests/ui/test_gui_components.cpp
         tests/ui/test_footswitch.cpp
         tests/ui/test_led.cpp
@@ -831,6 +833,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         src/gui/views/gui_presets.cpp
         src/gui/views/gui_recording.cpp
         src/gui/views/gui_tuner.cpp
+        src/gui/views/gui_keyboard_shortcuts.cpp
         src/gui/views/gui_analyzer.cpp
         src/gui/pedalboard/pedal_board.cpp
         src/gui/pedalboard/pedal_board_menu.cpp
@@ -950,22 +953,32 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
     endif()
 
     # Copy presets into build directory alongside the executable
-    add_custom_target(copy_presets ALL
+    add_custom_command(TARGET Amplitron POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_SOURCE_DIR}/presets"
             "$<TARGET_FILE_DIR:Amplitron>/presets"
         COMMENT "Copying presets to build directory"
     )
-    add_dependencies(copy_presets Amplitron)
+    add_custom_command(TARGET amplitron-tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/presets"
+            "$<TARGET_FILE_DIR:amplitron-tests>/presets"
+        COMMENT "Copying presets to build directory"
+    )
 
     # Copy fonts into build directory alongside the executable
-    add_custom_target(copy_fonts ALL
+    add_custom_command(TARGET Amplitron POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_SOURCE_DIR}/assets/fonts"
             "$<TARGET_FILE_DIR:Amplitron>/assets/fonts"
         COMMENT "Copying fonts to build directory"
     )
-    add_dependencies(copy_fonts Amplitron)
+    add_custom_command(TARGET amplitron-tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/assets/fonts"
+            "$<TARGET_FILE_DIR:amplitron-tests>/assets/fonts"
+        COMMENT "Copying fonts to build directory"
+    )
 
     # Install
     install(TARGETS Amplitron RUNTIME DESTINATION bin)
