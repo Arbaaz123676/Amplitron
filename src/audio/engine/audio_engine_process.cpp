@@ -71,7 +71,7 @@ void AudioEngine::process_audio(const float* input, float* output, int frame_cou
 
         // Pass your mono/stereo buffers to the executor we built
         audio_shadow_executor_->process(process_buffer_.data(), process_buffer_right_.data(),
-                                        frame_count);
+                                        frame_count, analyzer_capture_.get());
         std::memcpy(process_buffer_.data(), process_buffer_right_.data(),
                     static_cast<size_t>(frame_count) * sizeof(float));
     }

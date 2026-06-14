@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "audio/engine/analyzer_capture.h"
+
 namespace Amplitron {
 
 AudioGraphExecutor::AudioGraphExecutor() {}
@@ -116,7 +118,7 @@ void AudioGraphExecutor::update_transport_state(float bpm) {
     }
 }
 
-void AudioGraphExecutor::process(const float* input, float* output, int num_samples) {
+void AudioGraphExecutor::process(const float* input, float* output, int num_samples, AnalyzerCapture* capture) {
     if (num_samples > max_block_size_) {
         std::memset(output, 0, static_cast<size_t>(num_samples) * sizeof(float));
         return;
@@ -162,6 +164,10 @@ void AudioGraphExecutor::process(const float* input, float* output, int num_samp
             step.processor->process(node_input, node_output, num_samples);
         } else {
             std::memcpy(node_output, node_input, num_samples * sizeof(float));
+        }
+
+        if (capture) {
+            capture->capture_pedal(step.node_id, node_input, node_output, num_samples);
         }
     }
 

@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "audio/effects/core/effect.h"
+#include "audio/dsp/spectrum_analyzer.h"
 #include "common.h"
 
 namespace Amplitron {
@@ -29,6 +30,7 @@ class PedalWidget {
      * @param index  Position in the signal chain (used for ImGui IDs).
      */
     PedalWidget(IAudioEngine& engine, std::shared_ptr<Effect> effect, int index);
+    ~PedalWidget();
 
     /**
      * @brief Render the pedal widget for one frame.
@@ -92,6 +94,12 @@ class PedalWidget {
 
     ImVec4 pedal_color_;  ///< Pedal body color derived from effect type.
     ImVec4 led_color_;    ///< LED / accent color derived from effect type.
+
+    bool analyzer_open_ = false;
+    SpectrumAnalyzer spectrum_analyzer_;
+    uint64_t analyzer_last_sequence_ = 0;
+    std::array<float, SpectrumAnalyzer::FFT_SIZE> analyzer_input_buf_{};
+    std::array<float, SpectrumAnalyzer::FFT_SIZE> analyzer_output_buf_{};
 
     /** @brief Look up pedal_color_ and led_color_ from the theme table. */
     void assign_colors();
