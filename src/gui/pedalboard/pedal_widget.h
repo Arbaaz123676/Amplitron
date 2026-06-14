@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 
-#include "audio/effects/core/effect.h"
 #include "audio/dsp/spectrum_analyzer.h"
+#include "audio/effects/core/effect.h"
 #include "common.h"
 
 namespace Amplitron {

@@ -84,7 +84,8 @@ uint64_t AudioEngine::get_pedal_analyzer_sequence(int node_id) const {
 
 bool AudioEngine::copy_pedal_analyzer_snapshot(int node_id, float* input_dest, float* output_dest,
                                                int sample_count) const {
-    return analyzer_capture_->copy_pedal_analyzer_snapshot(node_id, input_dest, output_dest, sample_count);
+    return analyzer_capture_->copy_pedal_analyzer_snapshot(node_id, input_dest, output_dest,
+                                                           sample_count);
 }
 
 }  // namespace Amplitron
