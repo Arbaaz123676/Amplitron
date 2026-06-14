@@ -95,7 +95,8 @@ bool AnalyzerCapture::register_pedal_analyzer(int node_id) {
     // Find an empty slot
     for (int i = 0; i < 4; ++i) {
         int expected = -1;
-        if (pedal_captures_[i].node_id.compare_exchange_strong(expected, node_id, std::memory_order_acq_rel)) {
+        if (pedal_captures_[i].node_id.compare_exchange_strong(expected, node_id,
+                                                               std::memory_order_acq_rel)) {
             pedal_captures_[i].reset();
             return true;
         }
@@ -108,7 +109,8 @@ void AnalyzerCapture::unregister_pedal_analyzer(int node_id) {
     if (node_id < 0) return;
     for (int i = 0; i < 4; ++i) {
         int expected = node_id;
-        if (pedal_captures_[i].node_id.compare_exchange_strong(expected, -1, std::memory_order_acq_rel)) {
+        if (pedal_captures_[i].node_id.compare_exchange_strong(expected, -1,
+                                                               std::memory_order_acq_rel)) {
             pedal_captures_[i].reset();
             return;
         }
@@ -124,8 +126,8 @@ uint64_t AnalyzerCapture::get_pedal_analyzer_sequence(int node_id) const {
     return 0;
 }
 
-bool AnalyzerCapture::copy_pedal_analyzer_snapshot(int node_id, float* input_dest, float* output_dest,
-                                                   int sample_count) const {
+bool AnalyzerCapture::copy_pedal_analyzer_snapshot(int node_id, float* input_dest,
+                                                   float* output_dest, int sample_count) const {
     if (!input_dest || !output_dest || sample_count <= 0) {
         return false;
     }
@@ -138,15 +140,18 @@ bool AnalyzerCapture::copy_pedal_analyzer_snapshot(int node_id, float* input_des
             if (seq == 0) {
                 return false;
             }
-            std::memcpy(input_dest, pc.snapshot_input_.data(), static_cast<size_t>(count) * sizeof(float));
-            std::memcpy(output_dest, pc.snapshot_output_.data(), static_cast<size_t>(count) * sizeof(float));
+            std::memcpy(input_dest, pc.snapshot_input_.data(),
+                        static_cast<size_t>(count) * sizeof(float));
+            std::memcpy(output_dest, pc.snapshot_output_.data(),
+                        static_cast<size_t>(count) * sizeof(float));
             return true;
         }
     }
     return false;
 }
 
-void AnalyzerCapture::capture_pedal(int node_id, const float* input, const float* output, int count) {
+void AnalyzerCapture::capture_pedal(int node_id, const float* input, const float* output,
+                                    int count) {
     for (int i = 0; i < 4; ++i) {
         if (pedal_captures_[i].node_id.load(std::memory_order_relaxed) == node_id) {
             auto& pc = pedal_captures_[i];

@@ -118,7 +118,8 @@ void AudioGraphExecutor::update_transport_state(float bpm) {
     }
 }
 
-void AudioGraphExecutor::process(const float* input, float* output, int num_samples, AnalyzerCapture* capture) {
+void AudioGraphExecutor::process(const float* input, float* output, int num_samples,
+                                 AnalyzerCapture* capture) {
     if (num_samples > max_block_size_) {
         std::memset(output, 0, static_cast<size_t>(num_samples) * sizeof(float));
         return;

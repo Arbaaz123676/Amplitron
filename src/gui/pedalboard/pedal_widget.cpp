@@ -82,7 +82,8 @@ bool PedalWidget::render(float zoom) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f * zoom);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * zoom, 2.0f * zoom));
 
-    ImVec4 btn_col = analyzer_open_ ? ImVec4(0.16f, 0.66f, 0.4f, 0.6f) : ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    ImVec4 btn_col =
+        analyzer_open_ ? ImVec4(0.16f, 0.66f, 0.4f, 0.6f) : ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, btn_col);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.4f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 0.6f));
@@ -191,9 +192,11 @@ bool PedalWidget::render(float zoom) {
         ImVec2 overlay_pos(p0.x, p0.y - overlay_size.y - 8.0f * zoom);
 
         // Draw background
-        dl->AddRectFilled(overlay_pos, ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
+        dl->AddRectFilled(overlay_pos,
+                          ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
                           IM_COL32(15, 16, 20, 240), Theme::ROUNDING_SM * zoom);
-        dl->AddRect(overlay_pos, ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
+        dl->AddRect(overlay_pos,
+                    ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
                     IM_COL32(72, 78, 92, 220), Theme::ROUNDING_SM * zoom, 0, 1.5f * zoom);
 
         // Reference dB lines
@@ -221,7 +224,8 @@ bool PedalWidget::render(float zoom) {
         const auto& smoothed_out = spectrum_analyzer_.smoothed_output_db();
 
         // Helper lambda to draw curve
-        auto draw_curve = [&](const std::array<float, SpectrumAnalyzer::DISPLAY_BARS>& bars, ImU32 color) {
+        auto draw_curve = [&](const std::array<float, SpectrumAnalyzer::DISPLAY_BARS>& bars,
+                              ImU32 color) {
             constexpr int BARS = SpectrumAnalyzer::DISPLAY_BARS;
             ImVec2 prev_pt;
             for (int i = 0; i < BARS; ++i) {
