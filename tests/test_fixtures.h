@@ -10,11 +10,11 @@
 #include <string>
 #include <vector>
 
+#include "audio/engine/audio_engine.h"
 #include "test_framework.h"
 
 #define private public
 #define protected public
-#include "audio/engine/audio_engine.h"
 #include "audio/recorder/recorder.h"
 #include "gui/gui_manager.h"
 #include "gui/pedalboard/pedal_board.h"

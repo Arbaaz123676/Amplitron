@@ -51,24 +51,29 @@ endif()
 # Single-header C++17 JSON library used for preset serialization /
 # deserialization.  We disable nlohmann's own tests and install rules so
 # they don't pollute the Amplitron build.
+#
+# NOTE: We intentionally bypass find_package() here. The system or conda
+# environment may provide an older nlohmann version that is incompatible with
+# GCC 13 ABI (causing sstream/any redeclaration errors). Always fetching a
+# known-good v3.11.3 ensures cross-platform ABI compatibility.
 
-# Suppress cmake_minimum_required deprecation warnings from fetched deps
-set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
 
-find_package(nlohmann_json QUIET)
-if(NOT nlohmann_json_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-        nlohmann_json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG        v3.11.3
-        GIT_SHALLOW    TRUE
-    )
-    set(JSON_BuildTests OFF CACHE INTERNAL "Disable nlohmann/json tests")
-    set(JSON_Install    OFF CACHE INTERNAL "Disable nlohmann/json install")
-    FetchContent_MakeAvailable(nlohmann_json)
-endif()
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+    GIT_SHALLOW    TRUE
+)
+set(JSON_BuildTests OFF CACHE INTERNAL "Disable nlohmann/json tests")
+set(JSON_Install    OFF CACHE INTERNAL "Disable nlohmann/json install")
+# Suppress cmake_minimum_required deprecation warnings from nlohmann/json
+set(OLD_CMAKE_WARN_DEPRECATED ${CMAKE_WARN_DEPRECATED})
+set(CMAKE_WARN_DEPRECATED OFF)
+FetchContent_MakeAvailable(nlohmann_json)
+set(CMAKE_WARN_DEPRECATED ${OLD_CMAKE_WARN_DEPRECATED})
 # ---------------------------------------------------------------------------
+
 
 find_package(GTest QUIET)
 if(NOT TARGET GTest::gtest AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT IOS)
@@ -641,7 +646,6 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         # kiss_fft (BSD-3 bundled)
         ${KISS_FFT_SOURCES}
         # Desktop MIDI — identical between both targets regardless of backend
-        src/midi/midi_manager.cpp
         src/midi/midi_manager_mapping.cpp
         src/midi/midi_manager_persist.cpp
     )
@@ -683,6 +687,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         ${BACKEND_SOURCES}
         ${DIALOG_SOURCES}
         ${IMGUI_SOURCES}
+        src/midi/midi_manager.cpp
         $<TARGET_OBJECTS:amplitron_core>
         $<$<PLATFORM_ID:Windows>:${WIN_RC}>
     )
@@ -815,6 +820,7 @@ else() # NOT EMSCRIPTEN, ANDROID, or IOS
         src/audio/backend/audio_backend_factory.cpp
         src/audio/backend/portaudio_backend.cpp
         src/audio/backend/sdl_backend.cpp
+        src/midi/midi_manager.cpp
     )
 
     if(WITH_JACK AND UNIX AND NOT APPLE)

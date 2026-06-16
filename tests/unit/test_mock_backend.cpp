@@ -1,4 +1,5 @@
 #include "audio/backend/audio_backend.h"
+#include "audio/effects/core/effect.h"
 #include "audio/engine/audio_engine.h"
 #include "test_framework.h"
 
@@ -77,6 +78,15 @@ TEST(AudioBackend_PolymorphicMockBackendInjection) {
     ASSERT_EQ(inputs.size(), 1u);
     ASSERT_EQ(inputs[0].name, "Mock Input");
 
+    auto outputs = engine.get_output_devices();
+    ASSERT_EQ(outputs.size(), 1u);
+    ASSERT_EQ(outputs[0].name, "Mock Output");
+
+    ASSERT_EQ(engine.get_input_device_name(), "Mock Input");
+    ASSERT_EQ(engine.get_output_device_name(), "Mock Output");
+    ASSERT_EQ(engine.get_input_device(), 0);
+    ASSERT_EQ(engine.get_output_device(), 1);
+
     ASSERT_TRUE(engine.set_input_device(0));
     ASSERT_TRUE(mock->input_device_set);
 
@@ -85,6 +95,13 @@ TEST(AudioBackend_PolymorphicMockBackendInjection) {
 
     engine.shutdown();
     ASSERT_FALSE(mock->initialized);
+    engine.clear_backend_for_test();
+
+    // Test replace_backend_state_for_test
+    auto state_mock = std::make_unique<MockAudioBackend>();
+    engine.replace_backend_state_for_test(std::move(state_mock));
+    ASSERT_TRUE(engine.initialize());
+    engine.shutdown();
     engine.clear_backend_for_test();
 }
 
@@ -171,4 +188,74 @@ TEST(AudioEngine_DeviceControlAndFailures) {
 
     engine.shutdown();
     engine.clear_backend_for_test();
+}
+
+class SimpleMockEffect : public Effect {
+   public:
+    void process(float*, int) override {}
+    void reset() override {}
+    const char* name() const override { return "SimpleMock"; }
+    std::vector<EffectParam>& params() override {
+        static std::vector<EffectParam> p;
+        return p;
+    }
+    const std::vector<EffectParam>& params() const override {
+        static const std::vector<EffectParam> p;
+        return p;
+    }
+};
+
+TEST(AudioEngine_SetBufferSizeAndSampleRateReversion) {
+    auto mock = std::make_unique<ConfigurableMockAudioBackend>();
+    AudioEngine engine;
+    engine.replace_backend_for_test(mock.get());
+    engine.initialize();
+
+    // 1. set_buffer_size: success when not running
+    engine.set_buffer_size(256);
+    ASSERT_EQ(engine.get_buffer_size(), 256);
+
+    // 2. set_buffer_size: success when running and triggers buffer resize
+    engine.start();
+    engine.test_process_buffer().resize(0);
+    engine.test_process_buffer_right().resize(0);
+    engine.set_buffer_size(512);
+    ASSERT_EQ(engine.get_buffer_size(), 512);
+    ASSERT_TRUE(engine.is_running());
+
+    // 3. set_buffer_size: failure/revert when running
+    mock->start_fail_count = 1;  // Fails the first start() call, reversion start() succeeds
+    engine.set_buffer_size(1024);
+    ASSERT_EQ(engine.get_buffer_size(), 512);
+    ASSERT_TRUE(engine.is_running());
+
+    // 4. set_sample_rate: success when not running
+    engine.stop();
+    engine.set_sample_rate(44100);
+    ASSERT_EQ(engine.get_sample_rate(), 44100);
+
+    // 5. set_sample_rate: success when running with tuner tap and resizing buffers on start
+    auto fx = std::make_shared<SimpleMockEffect>();
+    engine.add_effect(fx);
+    engine.set_tuner_tap(fx);
+
+    engine.test_process_buffer().resize(0);
+    engine.test_process_buffer_right().resize(0);
+    engine.start();
+    engine.set_sample_rate(48000);
+    ASSERT_EQ(engine.get_sample_rate(), 48000);
+    ASSERT_TRUE(engine.is_running());
+
+    // 6. set_sample_rate: failure/revert when running with tuner tap and graph node
+    mock->start_fail_count = 1;  // Fails first start(), reversion start() succeeds
+    engine.set_sample_rate(96000);
+    ASSERT_EQ(engine.get_sample_rate(), 48000);
+    ASSERT_TRUE(engine.is_running());
+
+    // 7. start failure when backend is null (line 282 fallback)
+    engine.stop();
+    engine.clear_backend_for_test();
+    ASSERT_FALSE(engine.start());
+
+    engine.shutdown();
 }

@@ -108,6 +108,7 @@ bool WindowContext::initialize(int width, int height, const std::string& title) 
 #endif
 }
 
+#ifndef AMPLITRON_HEADLESS
 void WindowContext::load_fonts() {
     dpi_scale_ = 1.0f;
     int draw_w = width_, draw_h = height_;
@@ -199,6 +200,7 @@ void WindowContext::load_icon() {
         std::cerr << "Warning: Could not load assets/icon.svg" << std::endl;
     }
 }
+#endif
 
 void WindowContext::shutdown() {
     if (!initialized_) return;

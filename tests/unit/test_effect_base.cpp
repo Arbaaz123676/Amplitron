@@ -1,5 +1,6 @@
 #include <cmath>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
@@ -160,4 +161,38 @@ TEST(factory_registered_types) {
         }
     }
     ASSERT_TRUE(found_od);
+}
+
+TEST(effects_metadata_and_type_id) {
+    auto types = EffectFactory::instance().registered_types();
+    for (const auto& type : types) {
+        auto fx = EffectFactory::instance().create(type);
+        ASSERT_TRUE(fx != nullptr);
+        ASSERT_NE(fx->type_id(), nullptr);
+        ASSERT_NE(fx->get_display_name(), nullptr);
+
+        const Effect& const_fx = *fx;
+        ASSERT_NE(const_fx.type_id(), nullptr);
+        ASSERT_NE(const_fx.get_display_name(), nullptr);
+    }
+}
+
+class TestFallbackEffect : public Effect {
+   public:
+    void process(float*, int) override {}
+    void reset() override {}
+    const char* name() const override { return "TestFallback"; }
+    std::vector<EffectParam>& params() override {
+        static std::vector<EffectParam> p;
+        return p;
+    }
+    const std::vector<EffectParam>& params() const override {
+        static const std::vector<EffectParam> p;
+        return p;
+    }
+};
+
+TEST(effect_base_type_id_fallback) {
+    TestFallbackEffect fx;
+    ASSERT_EQ(std::string(fx.type_id()), "TestFallback");
 }

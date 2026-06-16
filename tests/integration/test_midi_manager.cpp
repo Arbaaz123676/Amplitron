@@ -1534,3 +1534,115 @@ TEST(midi_manager_direct_callback_tests) {
 
     mgr.shutdown();
 }
+
+extern bool g_mock_rtmidi_should_fail_enumerate;
+extern bool g_mock_rtmidi_should_fail_open;
+extern void (*g_mock_rtmidi_callback)(double, std::vector<unsigned char>*, void*);
+extern void* g_mock_rtmidi_user_data;
+extern bool g_mock_rtmidi_port_open;
+
+TEST(midi_manager_mock_init_and_port_ops) {
+    // 1. Initialize with enumeration failure
+    g_mock_rtmidi_should_fail_enumerate = true;
+    {
+        MidiManager mgr;
+        bool ok = mgr.initialize();
+        // Since enumeration throws an exception inside get_available_ports, initialize should
+        // handle it and succeed (though no ports auto-opened)
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(static_cast<int>(mgr.get_available_ports().size()), 0);
+    }
+    g_mock_rtmidi_should_fail_enumerate = false;
+
+    // 2. Open port index out of range
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        bool ok = mgr.open_port(999);
+        ASSERT_FALSE(ok);
+    }
+
+    // 3. Open port failure exception path
+    g_mock_rtmidi_should_fail_open = true;
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        bool ok = mgr.open_port(0);
+        ASSERT_FALSE(ok);
+    }
+    g_mock_rtmidi_should_fail_open = false;
+
+    // 4. Triggering callback directly via Mock callback hook
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        // Since ports are mock, let's open one
+        bool ok = mgr.open_port(0);
+        ASSERT_TRUE(ok);
+        ASSERT_TRUE(g_mock_rtmidi_port_open);
+        ASSERT_TRUE(g_mock_rtmidi_callback != nullptr);
+
+        // Call callback
+        std::vector<unsigned char> msg = {0xB0, 10, 50};
+        g_mock_rtmidi_callback(0.0, &msg, g_mock_rtmidi_user_data);
+
+        // Check if event was queued
+        ASSERT_EQ(Amplitron::TestAccessor::get_queue_size(mgr), 1u);
+
+        // Close port and verify callback cancel
+        mgr.close_port();
+        ASSERT_FALSE(g_mock_rtmidi_port_open);
+        ASSERT_TRUE(g_mock_rtmidi_callback == nullptr);
+    }
+}
+
+extern bool g_mock_rtmidi_should_fail_constructor;
+extern bool g_mock_rtmidi_should_fail_close;
+extern int g_mock_rtmidi_port_count;
+
+TEST(midi_manager_error_handling_edge_cases) {
+    // 1. Constructor failure path
+    g_mock_rtmidi_should_fail_constructor = true;
+    {
+        MidiManager mgr;
+        bool ok = mgr.initialize();
+        ASSERT_FALSE(ok);
+    }
+    g_mock_rtmidi_should_fail_constructor = false;
+
+    // 2. getPortName failure path
+    g_mock_rtmidi_port_count = 2;
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        auto ports = mgr.get_available_ports();
+        // Since getPortName(1) throws, only "Mock MIDI Port" should be returned, or the catch block
+        // executes and get_available_ports prints error and returns what it gathered so far (which
+        // is size 1).
+        ASSERT_EQ(static_cast<int>(ports.size()), 1);
+        ASSERT_EQ(ports[0], "Mock MIDI Port");
+    }
+    g_mock_rtmidi_port_count = 1;
+
+    // 3. open_port closePort failure catch
+    g_mock_rtmidi_should_fail_open = true;
+    g_mock_rtmidi_should_fail_close = true;
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        bool ok = mgr.open_port(0);
+        ASSERT_FALSE(ok);
+    }
+    g_mock_rtmidi_should_fail_open = false;
+    g_mock_rtmidi_should_fail_close = false;
+
+    // 4. close_port failure catch
+    g_mock_rtmidi_should_fail_close = true;
+    {
+        MidiManager mgr;
+        mgr.initialize();
+        mgr.open_port(0);
+        mgr.close_port();  // Should not throw/crash because it catches the close failure
+    }
+    g_mock_rtmidi_should_fail_close = false;
+}
