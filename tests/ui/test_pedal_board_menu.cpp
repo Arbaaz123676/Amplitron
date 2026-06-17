@@ -2,6 +2,9 @@
 
 #include <memory>
 
+#include "test_fixtures.h"
+#include "test_framework.h"
+
 #include "audio/effects/amp_cab/amp_simulator.h"
 #include "audio/effects/distortion/overdrive.h"
 #include "gui/commands/command_history.h"
@@ -11,8 +14,7 @@
 #undef private
 #include "gui/views/gui_midi.h"
 #include "midi/midi_manager.h"
-#include "test_fixtures.h"
-#include "test_framework.h"
+
 
 using namespace Amplitron;
 using namespace TestFramework;
