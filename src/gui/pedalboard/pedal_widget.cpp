@@ -171,92 +171,7 @@ bool PedalWidget::render(float zoom) {
                                  should_remove, zoom);
 
     if (analyzer_open_) {
-        // 1. Update/poll spectrum data
-        uint64_t seq = engine_.get_pedal_analyzer_sequence(index_);
-        float dt = std::max(ImGui::GetIO().DeltaTime, 1.0f / 240.0f);
-        if (seq != analyzer_last_sequence_) {
-            if (engine_.copy_pedal_analyzer_snapshot(index_, analyzer_input_buf_.data(),
-                                                     analyzer_output_buf_.data(),
-                                                     SpectrumAnalyzer::FFT_SIZE)) {
-                spectrum_analyzer_.update(analyzer_input_buf_.data(), analyzer_output_buf_.data(),
-                                          engine_.get_sample_rate(), dt);
-                analyzer_last_sequence_ = seq;
-            }
-        } else {
-            spectrum_analyzer_.update(analyzer_input_buf_.data(), analyzer_output_buf_.data(),
-                                      engine_.get_sample_rate(), dt);
-        }
-
-        // 2. Draw overlay floating right above the pedal header!
-        ImVec2 overlay_size(pedal_width, 100.0f * zoom);
-        ImVec2 overlay_pos(p0.x, p0.y - overlay_size.y - 8.0f * zoom);
-
-        // Draw background
-        dl->AddRectFilled(overlay_pos,
-                          ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
-                          IM_COL32(15, 16, 20, 240), Theme::ROUNDING_SM * zoom);
-        dl->AddRect(overlay_pos,
-                    ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
-                    IM_COL32(72, 78, 92, 220), Theme::ROUNDING_SM * zoom, 0, 1.5f * zoom);
-
-        // Reference dB lines
-        const float ref_lines[] = {-60.0f, -40.0f, -20.0f};
-        for (float db : ref_lines) {
-            float t = (db - (-80.0f)) / 80.0f;
-            float y = overlay_pos.y + overlay_size.y * (1.0f - t);
-            dl->AddLine(ImVec2(overlay_pos.x, y), ImVec2(overlay_pos.x + overlay_size.x, y),
-                        IM_COL32(58, 64, 76, 100), 1.0f * zoom);
-        }
-
-        // Frequency tick lines
-        const float ticks[] = {100.0f, 1000.0f, 10000.0f};
-        for (float hz : ticks) {
-            const float lo = std::log10(20.0f);
-            const float hi = std::log10(20000.0f);
-            float norm = std::clamp((std::log10(hz) - lo) / (hi - lo), 0.0f, 1.0f);
-            float x = overlay_pos.x + norm * overlay_size.x;
-            dl->AddLine(ImVec2(x, overlay_pos.y), ImVec2(x, overlay_pos.y + overlay_size.y),
-                        IM_COL32(52, 58, 72, 100), 1.0f * zoom);
-        }
-
-        // Render the curves
-        const auto& smoothed_in = spectrum_analyzer_.smoothed_input_db();
-        const auto& smoothed_out = spectrum_analyzer_.smoothed_output_db();
-
-        // Helper lambda to draw curve
-        auto draw_curve = [&](const std::array<float, SpectrumAnalyzer::DISPLAY_BARS>& bars,
-                              ImU32 color) {
-            constexpr int BARS = SpectrumAnalyzer::DISPLAY_BARS;
-            ImVec2 prev_pt;
-            for (int i = 0; i < BARS; ++i) {
-                float x = overlay_pos.x + (static_cast<float>(i) / (BARS - 1)) * overlay_size.x;
-                float db = std::clamp(bars[i], -80.0f, 0.0f);
-                float t = (db - (-80.0f)) / 80.0f;
-                float y = overlay_pos.y + overlay_size.y * (1.0f - t);
-                ImVec2 pt(x, y);
-                if (i > 0) {
-                    dl->AddLine(prev_pt, pt, color, 1.8f * zoom);
-                }
-                prev_pt = pt;
-            }
-        };
-
-        // Blue curve = signal entering pedal (pre-processing)
-        draw_curve(smoothed_in, IM_COL32(92, 170, 255, 230));
-        // Green curve = signal leaving pedal (post-processing)
-        draw_curve(smoothed_out, IM_COL32(82, 220, 135, 230));
-
-        // Legend/Label
-        ImGui::SetCursorScreenPos(ImVec2(overlay_pos.x + 8.0f * zoom, overlay_pos.y + 6.0f * zoom));
-        ImGui::SetWindowFontScale(zoom * 0.7f);
-        ImGui::TextColored(Theme::TextSecondary(), "Pre ");
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.36f, 0.67f, 1.0f, 1.0f), "[In]");
-        ImGui::SameLine();
-        ImGui::TextColored(Theme::TextSecondary(), " | Post ");
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.32f, 0.86f, 0.53f, 1.0f), "[Out]");
-        ImGui::SetWindowFontScale(1.0f);
+        render_spectrum_overlay(dl, p0, pedal_width, zoom);
     }
 
     ImGui::PopID();
@@ -329,6 +244,95 @@ void PedalWidget::commit_param_change(int param_index, float old_val, float new_
     auto cmd =
         std::make_unique<ParameterChangeCommand>(engine_, effect_, param_index, old_val, new_val);
     history_->push_executed(std::move(cmd));
+}
+
+void PedalWidget::render_spectrum_overlay(ImDrawList* dl, ImVec2 pedal_pos, float pedal_width, float zoom) {
+    // 1. Update/poll spectrum data
+    uint64_t seq = engine_.get_pedal_analyzer_sequence(index_);
+    float dt = std::max(ImGui::GetIO().DeltaTime, 1.0f / 240.0f);
+    if (seq != analyzer_last_sequence_) {
+        if (engine_.copy_pedal_analyzer_snapshot(index_, analyzer_input_buf_.data(),
+                                                 analyzer_output_buf_.data(),
+                                                 SpectrumAnalyzer::FFT_SIZE)) {
+            spectrum_analyzer_.update(analyzer_input_buf_.data(), analyzer_output_buf_.data(),
+                                      engine_.get_sample_rate(), dt);
+            analyzer_last_sequence_ = seq;
+        }
+    } else {
+        spectrum_analyzer_.update(analyzer_input_buf_.data(), analyzer_output_buf_.data(),
+                                  engine_.get_sample_rate(), dt);
+    }
+
+    // 2. Draw overlay floating right above the pedal header!
+    ImVec2 overlay_size(pedal_width, 100.0f * zoom);
+    ImVec2 overlay_pos(pedal_pos.x, pedal_pos.y - overlay_size.y - 8.0f * zoom);
+
+    // Draw background
+    dl->AddRectFilled(overlay_pos,
+                      ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
+                      IM_COL32(15, 16, 20, 240), Theme::ROUNDING_SM * zoom);
+    dl->AddRect(overlay_pos,
+                ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
+                IM_COL32(72, 78, 92, 220), Theme::ROUNDING_SM * zoom, 0, 1.5f * zoom);
+
+    // Reference dB lines
+    const float ref_lines[] = {-60.0f, -40.0f, -20.0f};
+    for (float db : ref_lines) {
+        float t = (db - (-80.0f)) / 80.0f;
+        float y = overlay_pos.y + overlay_size.y * (1.0f - t);
+        dl->AddLine(ImVec2(overlay_pos.x, y), ImVec2(overlay_pos.x + overlay_size.x, y),
+                    IM_COL32(58, 64, 76, 100), 1.0f * zoom);
+    }
+
+    // Frequency tick lines
+    const float ticks[] = {100.0f, 1000.0f, 10000.0f};
+    for (float hz : ticks) {
+        const float lo = std::log10(20.0f);
+        const float hi = std::log10(20000.0f);
+        float norm = std::clamp((std::log10(hz) - lo) / (hi - lo), 0.0f, 1.0f);
+        float x = overlay_pos.x + norm * overlay_size.x;
+        dl->AddLine(ImVec2(x, overlay_pos.y), ImVec2(x, overlay_pos.y + overlay_size.y),
+                    IM_COL32(52, 58, 72, 100), 1.0f * zoom);
+    }
+
+    // Render the curves
+    const auto& smoothed_in = spectrum_analyzer_.smoothed_input_db();
+    const auto& smoothed_out = spectrum_analyzer_.smoothed_output_db();
+
+    // Helper lambda to draw curve
+    auto draw_curve = [&](const std::array<float, SpectrumAnalyzer::DISPLAY_BARS>& bars,
+                          ImU32 color) {
+        constexpr int BARS = SpectrumAnalyzer::DISPLAY_BARS;
+        ImVec2 prev_pt;
+        for (int i = 0; i < BARS; ++i) {
+            float x = overlay_pos.x + (static_cast<float>(i) / (BARS - 1)) * overlay_size.x;
+            float db = std::clamp(bars[i], -80.0f, 0.0f);
+            float t = (db - (-80.0f)) / 80.0f;
+            float y = overlay_pos.y + overlay_size.y * (1.0f - t);
+            ImVec2 pt(x, y);
+            if (i > 0) {
+                dl->AddLine(prev_pt, pt, color, 1.8f * zoom);
+            }
+            prev_pt = pt;
+        }
+    };
+
+    // Blue curve = signal entering pedal (pre-processing)
+    draw_curve(smoothed_in, IM_COL32(92, 170, 255, 230));
+    // Green curve = signal leaving pedal (post-processing)
+    draw_curve(smoothed_out, IM_COL32(82, 220, 135, 230));
+
+    // Legend/Label
+    ImGui::SetCursorScreenPos(ImVec2(overlay_pos.x + 8.0f * zoom, overlay_pos.y + 6.0f * zoom));
+    ImGui::SetWindowFontScale(zoom * 0.7f);
+    ImGui::TextColored(Theme::TextSecondary(), "Pre ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.36f, 0.67f, 1.0f, 1.0f), "[In]");
+    ImGui::SameLine();
+    ImGui::TextColored(Theme::TextSecondary(), " | Post ");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.32f, 0.86f, 0.53f, 1.0f), "[Out]");
+    ImGui::SetWindowFontScale(1.0f);
 }
 
 }  // namespace Amplitron

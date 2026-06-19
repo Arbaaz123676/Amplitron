@@ -17,6 +17,7 @@ class AnalyzerCapture : public IAnalyzerProvider {
     static constexpr int ANALYZER_FFT_SIZE = 2048;
     static constexpr int ANALYZER_FFT_MASK = ANALYZER_FFT_SIZE - 1;
     static constexpr int ANALYZER_HOP_SIZE = 1024;
+    static constexpr int MAX_PEDAL_ANALYZERS = 4;
 
     AnalyzerCapture();
     ~AnalyzerCapture() override = default;
@@ -55,11 +56,11 @@ class AnalyzerCapture : public IAnalyzerProvider {
 
     // Per-pedal analyzer captures
     struct PedalCapture {
-        std::atomic<int> node_id{-1};
+        std::atomic<int> node_id_{-1};
         std::array<float, ANALYZER_FFT_SIZE> capture_input_{};
         std::array<float, ANALYZER_FFT_SIZE> capture_output_{};
-        int capture_index_ = 0;
-        int samples_since_publish_ = 0;
+        std::atomic<int> capture_index_{0};
+        std::atomic<int> samples_since_publish_{0};
 
         mutable std::mutex mutex_;
         std::array<float, ANALYZER_FFT_SIZE> snapshot_input_{};
@@ -72,12 +73,12 @@ class AnalyzerCapture : public IAnalyzerProvider {
             capture_output_.fill(0.0f);
             snapshot_input_.fill(0.0f);
             snapshot_output_.fill(0.0f);
-            capture_index_ = 0;
-            samples_since_publish_ = 0;
+            capture_index_.store(0, std::memory_order_relaxed);
+            samples_since_publish_.store(0, std::memory_order_relaxed);
             sequence_.store(0, std::memory_order_release);
         }
     };
-    std::array<PedalCapture, 4> pedal_captures_{};
+    std::array<PedalCapture, MAX_PEDAL_ANALYZERS> pedal_captures_{};
 };
 
 }  // namespace Amplitron

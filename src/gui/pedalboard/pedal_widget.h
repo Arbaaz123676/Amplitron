@@ -76,6 +76,7 @@ class PedalWidget {
     void render_footswitch_and_extras(ImDrawList* dl, ImVec2 p0, ImVec2 p1, float pedal_width,
                                       float pedal_height, bool is_amp, bool enabled,
                                       bool& should_remove, float zoom);
+    void render_spectrum_overlay(ImDrawList* dl, ImVec2 pedal_pos, float pedal_width, float zoom);
 
     IAudioEngine& engine_;
     std::shared_ptr<Effect> effect_;
