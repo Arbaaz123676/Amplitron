@@ -95,10 +95,10 @@ bool AnalyzerCapture::register_pedal_analyzer(int node_id) {
     // Find an empty slot
     for (int i = 0; i < MAX_PEDAL_ANALYZERS; ++i) {
         if (pedal_captures_[i].node_id_.load(std::memory_order_relaxed) == -1) {
-            pedal_captures_[i].reset();
             int expected = -1;
             if (pedal_captures_[i].node_id_.compare_exchange_strong(expected, node_id,
                                                                     std::memory_order_acq_rel)) {
+                pedal_captures_[i].reset();
                 return true;
             }
         }
