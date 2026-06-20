@@ -167,7 +167,7 @@ TEST_F(PresetTest, test_pedal_widget_footswitch_click_interaction) {
 TEST_F(PresetTest, test_pedal_widget_analyzer_toggle_and_render) {
     ScopedImGuiContext imgui;
     AudioEngine engine;
-    engine.initialize();
+    ASSERT_TRUE(engine.initialize());
 
     auto od = std::make_shared<Overdrive>();
     PedalWidget widget(engine, od, 0);

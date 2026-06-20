@@ -98,7 +98,7 @@ bool AnalyzerCapture::register_pedal_analyzer(int node_id) {
             pedal_captures_[i].reset();
             int expected = -1;
             if (pedal_captures_[i].node_id_.compare_exchange_strong(expected, node_id,
-                                                                   std::memory_order_acq_rel)) {
+                                                                    std::memory_order_acq_rel)) {
                 return true;
             }
         }
@@ -112,7 +112,7 @@ void AnalyzerCapture::unregister_pedal_analyzer(int node_id) {
     for (int i = 0; i < MAX_PEDAL_ANALYZERS; ++i) {
         int expected = node_id;
         if (pedal_captures_[i].node_id_.compare_exchange_strong(expected, -1,
-                                                               std::memory_order_acq_rel)) {
+                                                                std::memory_order_acq_rel)) {
             pedal_captures_[i].reset();
             return;
         }

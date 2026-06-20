@@ -246,7 +246,8 @@ void PedalWidget::commit_param_change(int param_index, float old_val, float new_
     history_->push_executed(std::move(cmd));
 }
 
-void PedalWidget::render_spectrum_overlay(ImDrawList* dl, ImVec2 pedal_pos, float pedal_width, float zoom) {
+void PedalWidget::render_spectrum_overlay(ImDrawList* dl, ImVec2 pedal_pos, float pedal_width,
+                                          float zoom) {
     // 1. Update/poll spectrum data
     uint64_t seq = engine_.get_pedal_analyzer_sequence(index_);
     float dt = std::max(ImGui::GetIO().DeltaTime, 1.0f / 240.0f);
@@ -271,8 +272,7 @@ void PedalWidget::render_spectrum_overlay(ImDrawList* dl, ImVec2 pedal_pos, floa
     dl->AddRectFilled(overlay_pos,
                       ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
                       IM_COL32(15, 16, 20, 240), Theme::ROUNDING_SM * zoom);
-    dl->AddRect(overlay_pos,
-                ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
+    dl->AddRect(overlay_pos, ImVec2(overlay_pos.x + overlay_size.x, overlay_pos.y + overlay_size.y),
                 IM_COL32(72, 78, 92, 220), Theme::ROUNDING_SM * zoom, 0, 1.5f * zoom);
 
     // Reference dB lines

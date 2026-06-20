@@ -7,8 +7,8 @@
 
 #include "audio/effects/distortion/distortion.h"
 #include "audio/effects/distortion/overdrive.h"
-#include "audio/engine/audio_engine.h"
 #include "audio/engine/analyzer_capture.h"
+#include "audio/engine/audio_engine.h"
 #include "test_fixtures.h"
 #include "test_framework.h"
 #include "test_mocks.h"
@@ -546,9 +546,12 @@ TEST_F(AudioEngineTest, ProcessAudioResizesInternalBuffersWhenFrameCountExceedsC
 }
 
 TEST_F(AudioEngineTest, GetterTestCoverage) {
-    ASSERT_GE(engine.test_process_buffer().size(), 0u);
-    ASSERT_GE(engine.test_process_buffer_right().size(), 0u);
-    ASSERT_TRUE(engine.test_audio_shadow_executor() == nullptr || engine.test_audio_shadow_executor() != nullptr);
+    ASSERT_EQ(engine.test_process_buffer().size(), 16384u);
+    ASSERT_EQ(engine.test_process_buffer_right().size(), 16384u);
+    ASSERT_NEAR(engine.test_process_buffer()[0], 0.0f, 1e-6f);
+    ASSERT_NEAR(engine.test_process_buffer_right()[0], 0.0f, 1e-6f);
+    ASSERT_NE(engine.test_audio_shadow_executor(), nullptr);
+    ASSERT_TRUE(engine.test_audio_shadow_executor()->test_execution_plan().empty());
 }
 
 TEST(AnalyzerCapturePedalRegistration) {
@@ -598,11 +601,14 @@ TEST(AnalyzerCapturePedalPublishAndSnapshot) {
     // Attempting snapshot copy when sequence is 0 should fail
     std::vector<float> input_snap(2048, 0.0f);
     std::vector<float> output_snap(2048, 0.0f);
-    ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
+    ASSERT_FALSE(
+        capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
     ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(node_id, nullptr, output_snap.data(), 1024));
     ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), nullptr, 1024));
-    ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), -5));
-    ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(999, input_snap.data(), output_snap.data(), 1024)); // unregistered
+    ASSERT_FALSE(
+        capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), -5));
+    ASSERT_FALSE(capture.copy_pedal_analyzer_snapshot(999, input_snap.data(), output_snap.data(),
+                                                      1024));  // unregistered
 
     // Sequence for unregistered node
     ASSERT_EQ(capture.get_pedal_analyzer_sequence(999), 0u);
@@ -618,7 +624,8 @@ TEST(AnalyzerCapturePedalPublishAndSnapshot) {
     ASSERT_GT(capture.get_pedal_analyzer_sequence(node_id), 0u);
 
     // Now copy snapshot should succeed
-    bool success = capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 2048);
+    bool success =
+        capture.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 2048);
     ASSERT_TRUE(success);
     ASSERT_NEAR(input_snap[1024], 0.25f, 1e-6f);
     ASSERT_NEAR(output_snap[1024], 0.75f, 1e-6f);
@@ -637,9 +644,11 @@ TEST_F(AudioEngineTest, AudioEnginePedalAnalyzerWrappers) {
 
     std::vector<float> input_snap(2048, 0.0f);
     std::vector<float> output_snap(2048, 0.0f);
-    ASSERT_FALSE(engine.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
+    ASSERT_FALSE(
+        engine.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
 
     engine.unregister_pedal_analyzer(node_id);
     // Registration should fail / be cleaned up
-    ASSERT_FALSE(engine.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
+    ASSERT_FALSE(
+        engine.copy_pedal_analyzer_snapshot(node_id, input_snap.data(), output_snap.data(), 1024));
 }
