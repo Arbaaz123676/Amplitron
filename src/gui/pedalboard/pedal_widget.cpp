@@ -90,7 +90,7 @@ bool PedalWidget::render(float zoom) {
 
     ImGui::SetCursorScreenPos(ImVec2(btn_x, btn_y));
     char btn_id[64];
-    std::snprintf(btn_id, sizeof(btn_id), "📊##spec_%d", index_);
+    std::snprintf(btn_id, sizeof(btn_id), "?##spec_%d", index_);
 
     ImGui::SetNextItemAllowOverlap();
     if (ImGui::Button(btn_id, ImVec2(20.0f * zoom, 20.0f * zoom))) {
